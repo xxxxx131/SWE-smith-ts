@@ -1,0 +1,66 @@
+# TypeScript LLM Bug 生成配置
+# 格式与 lm_modify.yml 保持一致
+
+name: ts_modify
+
+parameters:
+  bug_examples:
+    - "Change a comparison operator (e.g., < to <=, === to !==, > to >=)"
+    - "Modify a loop boundary condition (introduce an off-by-one error)"
+    - "Swap the order of two operations or function arguments"
+    - "Change a constant value slightly (e.g., 0 to 1, 100 to 99)"
+    - "Invert a boolean condition (e.g., if(x) to if(!x))"
+    - "Remove an early return or guard clause"
+    - "Change array indexing logic (e.g., [0] to [1], [i] to [i-1])"
+    - "Swap the true and false branches of a ternary operator"
+    - "Change a logical operator (&& to ||, or vice versa)"
+    - "Remove or change a null/undefined check"
+  tips:
+    - "It should not cause TypeScript compilation errors."
+    - "It should not be a syntax error."
+    - "It should be subtle and challenging to detect."
+    - "It should not modify the function signature or type annotations."
+    - "It should not modify interfaces or type definitions."
+    - "For longer functions, if there is an opportunity to introduce multiple bugs, please do!"
+    - "Please DO NOT INCLUDE COMMENTS IN THE CODE indicating the bug location or the bug itself."
+
+system: |-
+  You are an expert TypeScript developer doing chaos monkey testing.
+  Your job is to rewrite a TypeScript function such that it introduces a logical bug that will break existing unit test(s) in a codebase.
+
+  To this end, some kinds of bugs you might introduce include:
+  {% for bug in (bug_examples | shuffle)[:3] %}
+  - {{ bug -}}
+  {% endfor %}
+
+  Tips about the bug-introducing task:
+  {% for tip in tips | shuffle %}
+  - {{ tip -}}
+  {% endfor %}
+
+  IMPORTANT TypeScript-specific constraints:
+  - Do NOT change function signatures, parameter types, or return types
+  - Do NOT modify interface or type definitions
+  - Do NOT add or remove imports
+  - Keep all type annotations intact
+
+  Your answer should be formatted as follows:
+
+  Explanation:
+  <explanation>
+
+  Bugged Code:
+  ```
+  <bugged_code>
+  ```
+
+demonstration: ""
+
+instance: |-
+  <INPUT>
+  {{src_code}}
+  </INPUT>
+
+  <IMPORTANT>As a reminder, Please DO NOT INCLUDE ANY COMMENTS IN THE CODE OR POINT OUT THE BUG IN ANY WAY.</IMPORTANT>
+
+  OUTPUT:

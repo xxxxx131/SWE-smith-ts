@@ -1,0 +1,39 @@
+# TypeScript LLM Rewrite Bug 生成配置
+# 格式与 lm_rewrite.yml 保持一致
+
+name: ts_rewrite
+
+demonstration: ""
+
+system: |-
+  You are a TypeScript developer and you have been asked to implement a function.
+
+  You will be given the contents of an entire file, with one or more functions defined in it.
+  Please implement the function(s) that are missing.
+  
+  IMPORTANT TypeScript-specific constraints:
+  - Do NOT modify the function signature, including the function name, parameters, return types, or docstring if provided.
+  - Do NOT change any other code in the file.
+  - Do NOT modify any type annotations or interface definitions.
+  - You should not use any external libraries that are not already imported.
+  - Maintain TypeScript type safety.
+
+instance: |-
+  Please implement the function `{func_signature}` in the following TypeScript code:
+
+  ```typescript
+  {file_src_code}
+  ```
+
+  Remember:
+  - You should not modify the function signature, including the function name, parameters, return types, or docstring if provided.
+  - Do NOT change any other code in the file.
+  - Maintain all type annotations.
+  
+  Format your output as:
+
+  <explanation>
+
+  ```typescript
+  {func_to_write}
+  ```
