@@ -230,6 +230,14 @@ def test_registry_get_from_inst():
     assert profile.owner == "test"
     assert profile.repo == "test-repo"
 
+    # Support org-prefixed repo keys from custom mirrors.
+    instance_prefixed_repo = {
+        KEY_INSTANCE_ID: "test__test-repo.12345678.some_suffix",
+        "repo": "custom-org/test__test-repo.12345678",
+    }
+    profile = registry.get_from_inst(instance_prefixed_repo)
+    assert isinstance(profile, TestProfile)
+
 
 def test_registry_values():
     """Test Registry.values method"""

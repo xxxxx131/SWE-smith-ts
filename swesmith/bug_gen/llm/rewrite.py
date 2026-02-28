@@ -20,6 +20,7 @@ import os
 import random
 import shutil
 import subprocess
+import threading
 import yaml
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -53,6 +54,42 @@ logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 litellm.drop_params = True
 litellm.suppress_debug_info = True
 random.seed(24)
+SUBPROCESS_DEVNULL = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
+
+
+def _reset_repo_worktree(repo: str) -> None:
+    """Best-effort cleanup to recover from failed patch application."""
+    subprocess.run(["git", "-C", repo, "reset", "--hard"], check=False, **SUBPROCESS_DEVNULL)
+    subprocess.run(["git", "-C", repo, "clean", "-fdx"], check=False, **SUBPROCESS_DEVNULL)
+
+
+def _render_file_with_rewrite(candidate: CodeEntity, rewrite: str) -> str:
+    """
+    Return file content after replacing candidate lines with `rewrite`, without touching disk.
+    """
+    with open(candidate.file_path, "r") as file:
+        lines = file.readlines()
+
+    if (
+        candidate.line_start < 1
+        or candidate.line_end > len(lines)
+        or candidate.line_start > candidate.line_end
+    ):
+        raise ValueError("Invalid line range specified.")
+
+    change = [
+        f"{' ' * candidate.indent_level * candidate.indent_size}{x}"
+        if len(x.strip()) > 0
+        else x
+        for x in rewrite.splitlines(keepends=True)
+    ]
+    if not change:
+        return "".join(lines)
+
+    curr_last_line = lines[candidate.line_end - 1]
+    num_newlines = len(curr_last_line) - len(curr_last_line.rstrip("\n"))
+    change[-1] = change[-1].rstrip("\n") + "\n" * num_newlines
+    return "".join(lines[: candidate.line_start - 1] + change + lines[candidate.line_end :])
 
 
 def main(
@@ -80,6 +117,8 @@ def main(
     print(f"Logging bugs to {log_dir}")
     if not redo_existing:
         print("Skipping existing bugs.")
+    # All candidates share one local checkout. Protect worktree mutations.
+    repo_lock = threading.Lock()
 
     def _process_candidate(candidate: CodeEntity) -> dict[str, Any]:
         bug_dir = get_bug_directory(log_dir, candidate)
@@ -92,23 +131,24 @@ def main(
             ):
                 return {"n_bugs_generated": 0, "cost": 0.0}
 
-        try:
-            # Blank out the function body
-            blank_function = BugRewrite(
-                rewrite=candidate.stub,
-                explanation="Blanked out the function body.",
-                strategy=LM_REWRITE,
-            )
-            apply_code_change(candidate, blank_function)
-        except Exception:
-            return {"n_generation_failed": 1, "cost": 0.0}
+        # Blank out the function body (prompt-only, in memory).
+        blank_function = BugRewrite(
+            rewrite=candidate.stub,
+            explanation="Blanked out the function body.",
+            strategy=LM_REWRITE,
+        )
 
         # Get prompt content
-        prompt_content = {
-            "func_signature": candidate.signature,
-            "func_to_write": blank_function.rewrite,
-            "file_src_code": open(candidate.file_path).read(),
-        }
+        try:
+            prompt_content = {
+                "func_signature": candidate.signature,
+                "func_to_write": blank_function.rewrite,
+                "file_src_code": _render_file_with_rewrite(
+                    candidate, blank_function.rewrite
+                ),
+            }
+        except Exception:
+            return {"n_generation_failed": 1, "cost": 0.0}
 
         # Generate a rewrite
         messages = [
@@ -126,20 +166,14 @@ def main(
             )
         except litellm.ContextWindowExceededError:
             return {"n_generation_failed": 1, "cost": 0.0}
+        except Exception:
+            return {"n_generation_failed": 1, "cost": 0.0}
         choice = response.choices[0]
         message = choice.message
 
-        # Revert the blank-out change to the current file and apply the rewrite
+        # Apply the rewrite and materialize patch under lock.
         code_block = extract_code_block(message.content)
         explanation = message.content.split("```", 1)[0].strip()
-
-        subprocess.run(
-            f"cd {repo}; git reset --hard",
-            shell=True,
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
         cost = completion_cost(completion_response=response)
         rewrite = BugRewrite(
             rewrite=code_block,
@@ -148,8 +182,13 @@ def main(
             cost=cost,
             output=message.content,
         )
-        apply_code_change(candidate, rewrite)
-        patch = get_patch(repo, reset_changes=True)
+        try:
+            with repo_lock:
+                apply_code_change(candidate, rewrite)
+                patch = get_patch(repo, reset_changes=True)
+        except Exception:
+            _reset_repo_worktree(repo)
+            return {"n_generation_failed": 1, "cost": cost}
         if not patch or len(patch.strip()) == 0:
             return {"n_generation_failed": 0, "cost": cost}
 

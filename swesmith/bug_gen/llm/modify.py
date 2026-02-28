@@ -23,6 +23,8 @@ import litellm
 import logging
 import os
 import random
+import subprocess
+import threading
 import yaml
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -52,6 +54,13 @@ load_dotenv(dotenv_path=os.getenv("SWEFT_DOTENV_PATH"))
 
 logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 litellm.suppress_debug_info = True
+SUBPROCESS_DEVNULL = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
+
+
+def _reset_repo_worktree(repo: str) -> None:
+    """Best-effort cleanup to recover from failed patch application."""
+    subprocess.run(["git", "-C", repo, "reset", "--hard"], check=False, **SUBPROCESS_DEVNULL)
+    subprocess.run(["git", "-C", repo, "clean", "-fdx"], check=False, **SUBPROCESS_DEVNULL)
 
 
 def gen_bug_from_code_lm(
@@ -156,6 +165,9 @@ def main(
     log_dir = LOG_DIR_BUG_GEN / repo
     log_dir.mkdir(parents=True, exist_ok=True)
     print(f"Logging bugs to {log_dir}")
+    # All candidates share the same local repo checkout.
+    # Serialize worktree mutations to avoid patch-file and index races.
+    repo_lock = threading.Lock()
 
     def _process_candidate(candidate: CodeEntity):
         # Run bug generation
@@ -173,13 +185,15 @@ def main(
             try:
                 with open(bug_dir / metadata_path, "w") as f:
                     json.dump(bug.to_dict(), f, indent=2)
-                apply_code_change(candidate, bug)
-                patch = get_patch(repo, reset_changes=True)
+                with repo_lock:
+                    apply_code_change(candidate, bug)
+                    patch = get_patch(repo, reset_changes=True)
                 if not patch:
                     raise ValueError("Patch is empty.")
                 with open(bug_dir / bug_path, "w") as f:
                     f.write(patch)
             except Exception as e:
+                _reset_repo_worktree(repo)
                 print(
                     f"Error applying bug to {candidate.name} in {candidate.file_path}: {e}",
                 )

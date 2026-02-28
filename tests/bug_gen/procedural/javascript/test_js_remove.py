@@ -193,6 +193,17 @@ def test_remove_conditional_modifier(tmp_path, src, expected):
     return z;
 }""",
         ),
+        # Remove lexical declarations (let/const)
+        (
+            """function qux() {
+    let x = 1;
+    const y = 2;
+    return x + y;
+}""",
+            """function qux() {
+    return x + y;
+}""",
+        ),
     ],
 )
 def test_remove_assignment_modifier(tmp_path, src, expected):

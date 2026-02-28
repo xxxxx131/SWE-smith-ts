@@ -11,16 +11,32 @@ from typing import Set
 
 from pathlib import Path
 from swebench.harness.constants import FAIL_TO_PASS, KEY_INSTANCE_ID
-from swesmith.bug_gen.procedural.generate import (
-    PM_TECHNIQUES_CLASSES,
-    PM_TECHNIQUES_FUNCS,
-)
+from swesmith.bug_gen.procedural import MAP_EXT_TO_MODIFIERS
+from swesmith.bug_gen.procedural.base import CommonPMs
 from tqdm.auto import tqdm
 from unidiff import PatchSet
 
-BUG_TYPE_TO_PROMPT = {
-    x.name: x.explanation for x in PM_TECHNIQUES_CLASSES + PM_TECHNIQUES_FUNCS
-}
+
+def _build_bug_type_to_prompt() -> dict[str, str]:
+    """Build bug_type -> explanation mapping from active procedural modifiers."""
+    bug_type_to_prompt: dict[str, str] = {}
+
+    # Prefer currently registered language modifiers (includes JS/TS additions).
+    for modifiers in MAP_EXT_TO_MODIFIERS.values():
+        for modifier in modifiers:
+            name = getattr(modifier, "name", None)
+            explanation = getattr(modifier, "explanation", None)
+            if name and explanation:
+                bug_type_to_prompt[name] = explanation
+
+    # Backfill with common PMs for compatibility with older instance ids.
+    for common_pm in CommonPMs:
+        bug_type_to_prompt.setdefault(common_pm.name, common_pm.explanation)
+
+    return bug_type_to_prompt
+
+
+BUG_TYPE_TO_PROMPT = _build_bug_type_to_prompt()
 
 # MARK: Basic says-nothing prompt
 PROMPT_BASIC = (

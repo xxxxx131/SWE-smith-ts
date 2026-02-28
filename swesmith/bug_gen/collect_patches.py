@@ -13,6 +13,7 @@ from pathlib import Path
 
 from swebench.harness.constants import KEY_INSTANCE_ID
 from swesmith.constants import LOG_DIR_BUG_GEN, KEY_PATCH, PREFIX_BUG
+from swesmith.profiles import registry
 
 
 def main(bug_gen_path: str | Path, bug_type: str = "all", num_bugs: int = -1):
@@ -29,6 +30,12 @@ def main(bug_gen_path: str | Path, bug_type: str = "all", num_bugs: int = -1):
         )
 
     repo = bug_gen_path.name
+    image_name = None
+    try:
+        image_name = registry.get(repo).image_name
+    except Exception:
+        # Keep backward compatibility for custom repos without registered profile.
+        image_name = None
 
     patches = []
     prefix = f"{PREFIX_BUG}__"
@@ -55,6 +62,8 @@ def main(bug_gen_path: str | Path, bug_type: str = "all", num_bugs: int = -1):
                         "repo": repo,
                     }
                 )
+                if image_name:
+                    patch["image_name"] = image_name
                 patches.append(patch)
                 if num_bugs != -1 and len(patches) >= num_bugs:
                     exit_loop = True

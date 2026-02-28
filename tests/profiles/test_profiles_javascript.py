@@ -1,4 +1,9 @@
-from swesmith.profiles.javascript import parse_log_karma, parse_log_jasmine
+from swesmith.profiles.javascript import (
+    parse_log_karma,
+    parse_log_jasmine,
+    parse_log_mocha,
+    parse_log_qunit,
+)
 from swebench.harness.constants import TestStatus
 
 
@@ -67,3 +72,28 @@ No test results here
 """
     result = parse_log_jasmine(log)
     assert result == {}
+
+
+def test_parse_log_qunit_basic():
+    log = """
+ok 1 should parse input
+not ok 2 should reject invalid input
+ok 3 should handle empty strings
+"""
+    result = parse_log_qunit(log)
+    assert result["should parse input"] == TestStatus.PASSED.value
+    assert result["should reject invalid input"] == TestStatus.FAILED.value
+    assert result["should handle empty strings"] == TestStatus.PASSED.value
+
+
+def test_parse_log_qunit_no_matches():
+    log = "Random output without TAP lines"
+    result = parse_log_qunit(log)
+    assert result == {}
+
+
+def test_parse_log_mocha_with_ansi_sequences():
+    log = "\x1b[32m✓\x1b[0m should pass (3ms)\n\x1b[31m✖\x1b[0m should fail (2ms)"
+    result = parse_log_mocha(log)
+    assert result["should pass"] == TestStatus.PASSED.value
+    assert result["should fail"] == TestStatus.FAILED.value

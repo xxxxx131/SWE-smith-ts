@@ -247,8 +247,13 @@ def step4_validate_f2p(patches_file: Path, workers: int, redo_existing: bool) ->
 
     valid_main(str(patches_file), workers, redo_existing=redo_existing)
 
-    # 验证目录名 = patches 文件对应的 repo_name
-    repo_name = patches_file.stem.replace("_all_patches", "")
+    # 从 patches 文件内容读取 repo 字段（与 valid.py 内部逻辑一致）
+    # 这样无论 bug_type 或 num_bugs 参数如何，都能正确获取 repo_name
+    with open(patches_file, "r") as f:
+        bug_patches = json.load(f)
+    if not bug_patches:
+        raise ValueError(f"Patches 文件为空: {patches_file}")
+    repo_name = bug_patches[0]["repo"]
     validation_dir = Path(LOG_DIR_RUN_VALIDATION) / repo_name
     return validation_dir
 
@@ -336,6 +341,30 @@ def merge_issue_outputs(
     return out_path
 
 
+def _normalize_issue_output(tasks_file: Path, suffix: str) -> Path:
+    """Normalize issue output path to logs/issue_gen, with legacy fallback.
+
+    Legacy issue generators (`get_static.py`, `get_from_pr.py`, `get_from_tests.py`)
+    may write output next to `tasks_file` (e.g., `logs/task_insts`). The standard
+    pipeline contract expects issue outputs in `logs/issue_gen`.
+    """
+    canonical = Path(LOG_DIR_ISSUE_GEN) / f"{tasks_file.stem}__{suffix}.json"
+    legacy = tasks_file.parent / f"{tasks_file.stem}__{suffix}.json"
+
+    if canonical.exists():
+        return canonical
+
+    if legacy.exists():
+        canonical.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(legacy, canonical)
+        print(f"  ℹ️ 检测到旧路径产物，已同步到标准路径: {canonical}")
+        return canonical
+
+    raise FileNotFoundError(
+        f"未找到 issue 输出文件。标准路径: {canonical}；旧路径: {legacy}"
+    )
+
+
 def step6_generate_issue_text(
     tasks_file: Path,
     issue_mode: str,
@@ -358,7 +387,7 @@ def step6_generate_issue_text(
         from swesmith.issue_gen.get_static import main as static_main
 
         static_main(str(tasks_file))
-        out_path = Path(LOG_DIR_ISSUE_GEN) / f"{tasks_file.stem}__ig_static.json"
+        out_path = _normalize_issue_output(tasks_file, "ig_static")
         print(f"  ✅ 生成静态问题描述: {out_path}")
         return out_path
 
@@ -366,7 +395,7 @@ def step6_generate_issue_text(
         from swesmith.issue_gen.get_from_pr import main as pr_main
 
         pr_main(str(tasks_file))
-        out_path = Path(LOG_DIR_ISSUE_GEN) / f"{tasks_file.stem}__ig_orig.json"
+        out_path = _normalize_issue_output(tasks_file, "ig_orig")
         print(f"  ✅ 生成 PR 问题描述: {out_path}")
         return out_path
 
@@ -381,8 +410,7 @@ def step6_generate_issue_text(
             model=issue_tests_model,
             n_workers=issue_workers,
         )
-        suffix = issue_config.stem
-        out_path = Path(LOG_DIR_ISSUE_GEN) / f"{tasks_file.stem}__{suffix}.json"
+        out_path = _normalize_issue_output(tasks_file, issue_config.stem)
         print(f"  ✅ 生成测试相关问题描述: {out_path}")
         return out_path
 
@@ -503,19 +531,27 @@ def main() -> None:
     if args.org_dh:
         os.environ["SWESMITH_ORG_DH"] = args.org_dh
 
-    # 获取 profile
-    try:
-        from swesmith.profiles import typescript
+    # 获取 profile（支持内置 + auto_profile_ts 生成的 profiles/generated/*.py）
+    from swesmith.profiles import registry, typescript
 
-        profile_cls = getattr(typescript, args.profile)
-        profile = profile_cls()
-    except AttributeError:
+    available_ts_profiles: dict[str, type] = {}
+    for cls in set(registry.data.values()):
+        if (
+            isinstance(cls, type)
+            and issubclass(cls, typescript.TypeScriptProfile)
+            and cls.__name__ != "TypeScriptProfile"
+        ):
+            available_ts_profiles[cls.__name__] = cls
+
+    profile_cls = available_ts_profiles.get(args.profile)
+    if profile_cls is None:
         print(f"❌ 未找到 Profile: {args.profile}")
         print("可用的 TypeScript Profiles:")
-        for name in dir(typescript):
-            if name.endswith("Profile") and name != "TypeScriptProfile":
-                print(f"  - {name}")
+        for name in sorted(available_ts_profiles):
+            print(f"  - {name}")
         raise SystemExit(1)
+
+    profile = profile_cls()
 
     print("=" * 60)
     print("TypeScript 标准任务实例生成流程")

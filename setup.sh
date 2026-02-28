@@ -1,6 +1,6 @@
 set -euo pipefail
 
-PROJECT_DIR="/data/k8s/yrx/SWE-smith"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Install UV into project-local location if you haven't already
 export UV_INSTALL_DIR="${PROJECT_DIR}/.local"

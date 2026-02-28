@@ -39,6 +39,55 @@ from tqdm.auto import tqdm
 from typing import Optional, Tuple
 
 
+def _load_patch_from_pred(pred_path: Path) -> str | None:
+    """Read patch from SWE-agent `.pred` file (`model_patch`)."""
+    if not pred_path.exists():
+        return None
+    try:
+        pred = json.loads(pred_path.read_text())
+    except Exception as e:
+        print(f"Error loading prediction file {pred_path}: {e}")
+        return None
+    model_patch = pred.get("model_patch")
+    if model_patch is None:
+        return None
+    return str(model_patch)
+
+
+def _resolve_patch_text(folder: str, traj_dir: Path) -> str:
+    """Resolve patch text robustly for one trajectory folder.
+
+    Priority:
+    1) `.pred` model_patch (authoritative per-instance output from SWE-agent)
+    2) `.patch` hook output (legacy/auxiliary)
+    """
+    patch_path = traj_dir / folder / f"{folder}.patch"
+    pred_path = traj_dir / folder / f"{folder}.pred"
+
+    patch_from_patch = None
+    if patch_path.exists():
+        try:
+            patch_from_patch = patch_path.read_text()
+        except Exception as e:
+            print(f"Error reading patch file {patch_path}: {e}")
+
+    patch_from_pred = _load_patch_from_pred(pred_path)
+
+    if patch_from_pred and patch_from_patch:
+        if patch_from_pred.strip() != patch_from_patch.strip():
+            print(
+                f"[collect_trajs] WARNING: patch mismatch for {folder}; "
+                "using .pred model_patch"
+            )
+        return patch_from_pred
+    if patch_from_pred:
+        return patch_from_pred
+    if patch_from_patch:
+        return patch_from_patch
+    print(f"[collect_trajs] WARNING: no patch found for {folder}")
+    return ""
+
+
 def process_single_trajectory(
     folder: str,
     traj_dir: Path,
@@ -60,7 +109,6 @@ def process_single_trajectory(
             else report[folder].get("resolved", False)
         )
 
-        pred_path = traj_dir / folder / f"{folder}.patch"
         traj_path = traj_dir / folder / f"{folder}.traj"
         traj_orig = json.loads(traj_path.read_text())
         traj = transform_traj(traj_orig)
@@ -71,7 +119,7 @@ def process_single_trajectory(
                 "name"
             ]
         traj["traj_id"] = f"{folder}.{generate_hash(str(traj_dir))}"
-        traj["patch"] = pred_path.read_text() if pred_path.exists() else ""
+        traj["patch"] = _resolve_patch_text(folder, traj_dir)
 
         return (folder, traj)
     except Exception as e:

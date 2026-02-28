@@ -40,6 +40,7 @@ def run_evaluation(
     run_id: str,
     f2p_only: bool = False,
     is_gold: bool = False,
+    timeout: int | None = None,
 ) -> dict:
     """
     Run per-prediction evaluation
@@ -51,11 +52,12 @@ def run_evaluation(
     """
     instance_id = pred[KEY_INSTANCE_ID]
     rp = registry.get_from_inst(instance)
+    eval_timeout = timeout if timeout is not None else rp.timeout
     logger, timed_out = run_patch_in_container(  # type: ignore
         instance,
         run_id,
         RUN_EVALUATION_LOG_DIR,
-        rp.timeout,
+        eval_timeout,
         patch=pred[KEY_PREDICTION],
         commit=instance_id,
         f2p_only=f2p_only,
@@ -69,7 +71,7 @@ def run_evaluation(
     if timed_out:
         logger.info(f"Timed out for {instance_id}.")
         with open(report_path, "w") as f:
-            f.write(json.dumps({KEY_TIMED_OUT: True, "timeout": rp.timeout}, indent=4))
+            f.write(json.dumps({KEY_TIMED_OUT: True, "timeout": eval_timeout}, indent=4))
         close_logger(logger)
         return {"status": "timeout", "resolved": False}
 
@@ -100,6 +102,7 @@ def main(
     predictions_path: str = "gold",
     dataset_path: str = HF_DATASET,
     f2p_only: bool = False,
+    timeout: int | None = None,
     instance_ids: list | None = None,
     report_only: bool = False,
     redo_existing: bool = False,
@@ -194,6 +197,7 @@ def main(
                 run_id,
                 f2p_only,
                 is_gold,
+                timeout,
             )
         )
 
@@ -272,6 +276,12 @@ if __name__ == "__main__":
     parser.add_argument("--run_id", type=str, help="Unique identifier for this run")
     parser.add_argument(
         "-w", "--workers", type=int, help="Number of workers to use", default=4
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=None,
+        help="Override per-instance evaluation timeout in seconds (default: profile timeout).",
     )
     parser.add_argument(
         "--redo_existing",

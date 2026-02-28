@@ -110,6 +110,7 @@ There are 13 (and counting) in total.
 ### Running at Scale on Modal
 
 For generating and validating bugs across many repositories, use the `scripts/bug_gen.py` script which runs on [Modal](https://modal.com) for scalable cloud execution.
+(`scripts/bug_gen_modal.py` is kept as a backward-compatible entrypoint.)
 
 **Basic Usage**
 

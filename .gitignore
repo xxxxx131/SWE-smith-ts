@@ -193,6 +193,10 @@ uv.lock
 
 # TypeScript migration extras
 trajectories/
+trajectories_sft/
+outputs/
 files/
 colinhacks__zod*/
 ianstormtaylor__superstruct*/
+*.jsonl
+wandb/

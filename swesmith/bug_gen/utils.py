@@ -1,15 +1,27 @@
 import hashlib
 import os
 import subprocess
+import tempfile
 
 from dotenv import load_dotenv
 from itertools import combinations
-from swesmith.constants import TEMP_PATCH, BugRewrite, CodeEntity
+from swesmith.constants import BugRewrite, CodeEntity
 
 load_dotenv()
 
 
 DEVNULL = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
+
+
+def _create_temp_patch_file(patch: str) -> str:
+    """Write patch content to a unique temp file and return its path."""
+    fd, temp_patch_path = tempfile.mkstemp(
+        prefix="_temp_patch_swesmith_",
+        suffix=".diff",
+    )
+    with os.fdopen(fd, "w") as f:
+        f.write(patch)
+    return temp_patch_path
 
 
 def apply_code_change(candidate: CodeEntity, bug: BugRewrite) -> None:
@@ -57,6 +69,7 @@ def apply_code_change(candidate: CodeEntity, bug: BugRewrite) -> None:
 def apply_patches(repo: str, patch_files: list[str]) -> str | None:
     """Apply multiple patches to a target local directory, and get the combined patch."""
     cwd = os.getcwd()
+    temp_patch_path: str | None = None
     os.chdir(repo)
     try:
         for patch_file in patch_files:
@@ -64,17 +77,18 @@ def apply_patches(repo: str, patch_files: list[str]) -> str | None:
                 ["git", "apply", os.path.join("..", patch_file)], check=True, **DEVNULL
             )
         patch = get_patch(os.getcwd(), reset_changes=True)
+        if patch is None:
+            return None
 
         # Sanity check that merged patch applies cleanly
-        with open(TEMP_PATCH, "w") as f:
-            f.write(patch)
-        subprocess.run(["git", "apply", TEMP_PATCH], check=True, **DEVNULL)
+        temp_patch_path = _create_temp_patch_file(patch)
+        subprocess.run(["git", "apply", temp_patch_path], check=True, **DEVNULL)
         return patch
-    except subprocess.CalledProcessError:
+    except Exception:
         return None
     finally:
-        if os.path.exists(TEMP_PATCH):
-            os.remove(TEMP_PATCH)
+        if temp_patch_path and os.path.exists(temp_patch_path):
+            os.remove(temp_patch_path)
         subprocess.run(["git", "-C", ".", "reset", "--hard"], check=True, **DEVNULL)
         subprocess.run(["git", "clean", "-fdx"], check=True, **DEVNULL)
         os.chdir(cwd)
@@ -108,26 +122,37 @@ def get_patch(repo: str, reset_changes: bool = False):
     ):
         raise FileNotFoundError(f"'{repo}' is not a valid Git repository.")
 
-    subprocess.run(["git", "-C", repo, "add", "-A"], check=True, **DEVNULL)
-    patch = subprocess.run(
-        ["git", "-C", repo, "diff", "--staged"],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout
-    if len(patch.strip()) == 0:
-        return None
-    for cleanup_cmd in [
-        f"git -C {repo} restore --staged .",
-        f"git -C {repo} reset --hard",
-        f"git -C {repo} clean -fdx",
-    ]:
-        subprocess.run(cleanup_cmd.split(), check=True, **DEVNULL)
-    patch_file = os.path.join(repo, TEMP_PATCH)
-    with open(patch_file, "w") as f:
-        f.write(patch)
-    subprocess.run(["git", "-C", repo, "apply", TEMP_PATCH], check=True)
-    if reset_changes:
-        subprocess.run(["git", "-C", repo, "reset", "--hard"], check=True, **DEVNULL)
-        subprocess.run(["git", "-C", repo, "clean", "-fdx"], check=True, **DEVNULL)
-    return patch
+    temp_patch_path: str | None = None
+    try:
+        subprocess.run(["git", "-C", repo, "add", "-A"], check=True, **DEVNULL)
+        patch = subprocess.run(
+            ["git", "-C", repo, "diff", "--staged"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        if len(patch.strip()) == 0:
+            return None
+
+        for cleanup_cmd in [
+            f"git -C {repo} restore --staged .",
+            f"git -C {repo} reset --hard",
+            f"git -C {repo} clean -fdx",
+        ]:
+            subprocess.run(cleanup_cmd.split(), check=True, **DEVNULL)
+
+        temp_patch_path = _create_temp_patch_file(patch)
+        # Re-apply once to ensure generated patch is valid before returning it.
+        subprocess.run(["git", "-C", repo, "apply", temp_patch_path], check=True, **DEVNULL)
+        if reset_changes:
+            subprocess.run(["git", "-C", repo, "reset", "--hard"], check=True, **DEVNULL)
+            subprocess.run(["git", "-C", repo, "clean", "-fdx"], check=True, **DEVNULL)
+        return patch
+    except Exception:
+        # Best-effort cleanup so callers don't inherit a dirty worktree.
+        subprocess.run(["git", "-C", repo, "reset", "--hard"], check=False, **DEVNULL)
+        subprocess.run(["git", "-C", repo, "clean", "-fdx"], check=False, **DEVNULL)
+        raise
+    finally:
+        if temp_patch_path and os.path.exists(temp_patch_path):
+            os.remove(temp_patch_path)

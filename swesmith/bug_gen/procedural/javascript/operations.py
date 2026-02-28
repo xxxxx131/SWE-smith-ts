@@ -3,13 +3,9 @@ JavaScript operation modifiers for procedural bug generation using tree-sitter.
 """
 
 import sys
-import tree_sitter_javascript as tsjs
-from swesmith.bug_gen.procedural.javascript.base import JavaScriptProceduralModifier
+from swesmith.bug_gen.procedural.javascript.base import JavaScriptProceduralModifier, get_parser_for_entity
 from swesmith.bug_gen.procedural.base import CommonPMs
 from swesmith.constants import CodeProperty, BugRewrite, CodeEntity
-from tree_sitter import Language, Parser
-
-JS_LANGUAGE = Language(tsjs.language())
 
 
 def _safe_decode(bytes_obj, fallback=""):
@@ -31,7 +27,7 @@ class OperationChangeModifier(JavaScriptProceduralModifier):
     def modify(self, code_entity: CodeEntity) -> BugRewrite:
         """Change operators to others in their group."""
 
-        parser = Parser(JS_LANGUAGE)
+        parser = get_parser_for_entity(code_entity)
         tree = parser.parse(bytes(code_entity.src_code, "utf8"))
 
         modified_code = self._change_operators(code_entity.src_code, tree.root_node)
@@ -110,7 +106,7 @@ class OperationFlipOperatorModifier(JavaScriptProceduralModifier):
     def modify(self, code_entity: CodeEntity) -> BugRewrite:
         """Flip operators to their opposites."""
 
-        parser = Parser(JS_LANGUAGE)
+        parser = get_parser_for_entity(code_entity)
         tree = parser.parse(bytes(code_entity.src_code, "utf8"))
 
         modified_code = self._flip_operators(code_entity.src_code, tree.root_node)
@@ -189,7 +185,7 @@ class OperationSwapOperandsModifier(JavaScriptProceduralModifier):
     def modify(self, code_entity: CodeEntity) -> BugRewrite:
         """Swap left and right operands."""
 
-        parser = Parser(JS_LANGUAGE)
+        parser = get_parser_for_entity(code_entity)
         tree = parser.parse(bytes(code_entity.src_code, "utf8"))
 
         modified_code = self._swap_operands(code_entity.src_code, tree.root_node)
@@ -272,7 +268,7 @@ class OperationChangeConstantsModifier(JavaScriptProceduralModifier):
     def modify(self, code_entity: CodeEntity) -> BugRewrite:
         """Change constants by small amounts."""
 
-        parser = Parser(JS_LANGUAGE)
+        parser = get_parser_for_entity(code_entity)
         tree = parser.parse(bytes(code_entity.src_code, "utf8"))
 
         modified_code = self._change_constants(code_entity.src_code, tree.root_node)
@@ -338,7 +334,7 @@ class OperationBreakChainsModifier(JavaScriptProceduralModifier):
     def modify(self, code_entity: CodeEntity) -> BugRewrite:
         """Break chained binary operations."""
 
-        parser = Parser(JS_LANGUAGE)
+        parser = get_parser_for_entity(code_entity)
         tree = parser.parse(bytes(code_entity.src_code, "utf8"))
 
         modified_code = self._break_chains(code_entity.src_code, tree.root_node)
@@ -441,7 +437,7 @@ class AugmentedAssignmentSwapModifier(JavaScriptProceduralModifier):
     def modify(self, code_entity: CodeEntity) -> BugRewrite:
         """Swap augmented assignment operators."""
 
-        parser = Parser(JS_LANGUAGE)
+        parser = get_parser_for_entity(code_entity)
         tree = parser.parse(bytes(code_entity.src_code, "utf8"))
 
         modified_code = self._swap_augmented_assignments(
@@ -548,7 +544,7 @@ class TernaryOperatorSwapModifier(JavaScriptProceduralModifier):
 
     def modify(self, code_entity: CodeEntity) -> BugRewrite:
         """Modify ternary operators by swapping branches or negating conditions."""
-        parser = Parser(JS_LANGUAGE)
+        parser = get_parser_for_entity(code_entity)
         tree = parser.parse(bytes(code_entity.src_code, "utf8"))
 
         modified_code = self._modify_ternary(code_entity.src_code, tree.root_node)
@@ -657,7 +653,7 @@ class FunctionArgumentSwapModifier(JavaScriptProceduralModifier):
 
     def modify(self, code_entity: CodeEntity) -> BugRewrite:
         """Swap adjacent arguments in function calls."""
-        parser = Parser(JS_LANGUAGE)
+        parser = get_parser_for_entity(code_entity)
         tree = parser.parse(bytes(code_entity.src_code, "utf8"))
 
         modified_code = self._swap_arguments(code_entity.src_code, tree.root_node)

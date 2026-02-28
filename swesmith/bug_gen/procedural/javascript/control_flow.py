@@ -2,13 +2,9 @@
 JavaScript control flow modifiers for procedural bug generation using tree-sitter.
 """
 
-import tree_sitter_javascript as tsjs
 from swesmith.bug_gen.procedural.base import CommonPMs
-from swesmith.bug_gen.procedural.javascript.base import JavaScriptProceduralModifier
+from swesmith.bug_gen.procedural.javascript.base import JavaScriptProceduralModifier, get_parser_for_entity
 from swesmith.constants import BugRewrite, CodeEntity
-from tree_sitter import Language, Parser
-
-JS_LANGUAGE = Language(tsjs.language())
 
 
 class ControlIfElseInvertModifier(JavaScriptProceduralModifier):
@@ -22,7 +18,7 @@ class ControlIfElseInvertModifier(JavaScriptProceduralModifier):
     def modify(self, code_entity: CodeEntity) -> BugRewrite:
         """Swap if and else blocks."""
         # Parse the code
-        parser = Parser(JS_LANGUAGE)
+        parser = get_parser_for_entity(code_entity)
         tree = parser.parse(bytes(code_entity.src_code, "utf8"))
 
         changed = False
@@ -134,7 +130,7 @@ class ControlShuffleLinesModifier(JavaScriptProceduralModifier):
     def modify(self, code_entity: CodeEntity) -> BugRewrite:
         """Shuffle statements within a function body."""
         # Parse the code
-        parser = Parser(JS_LANGUAGE)
+        parser = get_parser_for_entity(code_entity)
         tree = parser.parse(bytes(code_entity.src_code, "utf8"))
 
         # Find function body and shuffle statements

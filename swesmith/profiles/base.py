@@ -8,6 +8,7 @@ installation and testing configurations for different repositories.
 import docker
 import os
 import platform
+import shlex
 import shutil
 import subprocess
 
@@ -20,6 +21,7 @@ from functools import cached_property
 from ghapi.all import GhApi
 from multiprocessing import Lock
 from pathlib import Path
+from urllib.parse import urlparse, urlunparse
 
 # Note: swesmith.bug_gen.adapters is imported lazily in extract_entities() to avoid
 # loading tree-sitter dependencies when only using Registry/get_valid_report
@@ -42,6 +44,86 @@ from unidiff import PatchSet
 
 
 load_dotenv()
+
+
+def _get_bridge_gateway(client: docker.DockerClient) -> str | None:
+    """Return Docker bridge gateway IP when available (e.g., 172.17.0.1)."""
+    try:
+        net = client.networks.get("bridge")
+        ipam = net.attrs.get("IPAM", {}).get("Config", [])
+        if ipam and isinstance(ipam, list):
+            gateway = ipam[0].get("Gateway")
+            if gateway:
+                return str(gateway)
+    except Exception:
+        pass
+    return None
+
+
+def _rewrite_proxy_url_for_container(url: str, gateway_ip: str | None) -> str:
+    if not gateway_ip:
+        return url
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return url
+    if parsed.hostname not in {"127.0.0.1", "localhost"}:
+        return url
+
+    auth = ""
+    if parsed.username:
+        auth = parsed.username
+        if parsed.password:
+            auth += f":{parsed.password}"
+        auth += "@"
+    port = f":{parsed.port}" if parsed.port else ""
+    netloc = f"{auth}{gateway_ip}{port}"
+    return urlunparse(parsed._replace(netloc=netloc))
+
+
+def _build_container_proxy_env(client: docker.DockerClient) -> dict[str, str]:
+    proxy_keys = [
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "all_proxy",
+        "NO_PROXY",
+        "no_proxy",
+    ]
+    gateway_ip = _get_bridge_gateway(client)
+    env = {}
+    for key in proxy_keys:
+        val = os.getenv(key)
+        if not val:
+            continue
+        if key.lower().endswith("_proxy") and not key.lower().startswith("no_"):
+            env[key] = _rewrite_proxy_url_for_container(val, gateway_ip)
+        else:
+            env[key] = val
+    return env
+
+
+def _build_docker_build_proxy_args() -> list[str]:
+    """Build `docker build` proxy args from host env."""
+    proxy_keys = [
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+        "NO_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "all_proxy",
+        "no_proxy",
+    ]
+    args: list[str] = []
+    for key in proxy_keys:
+        val = os.getenv(key)
+        if not val:
+            continue
+        args.extend(["--build-arg", f"{key}={val}"])
+    return args
 
 
 class SingletonMeta(ABCMeta):
@@ -236,9 +318,16 @@ class RepoProfile(ABC, metaclass=SingletonMeta):
         dockerfile_path = env_dir / "Dockerfile"
         with open(dockerfile_path, "w") as f:
             f.write(self.dockerfile)
+        proxy_args = _build_docker_build_proxy_args()
+        proxy_arg_str = " ".join(shlex.quote(arg) for arg in proxy_args)
+        build_cmd = (
+            f"docker build -f {shlex.quote(str(dockerfile_path))} "
+            f"--platform {shlex.quote(self.pltf)} --no-cache "
+            f"-t {shlex.quote(self.image_name)} {proxy_arg_str} ."
+        )
         with open(env_dir / "build_image.log", "w") as log_file:
             subprocess.run(
-                f"docker build -f {dockerfile_path} --platform {self.pltf} --no-cache -t {self.image_name} .",
+                build_cmd,
                 check=True,
                 shell=True,
                 stdout=log_file,
@@ -447,6 +536,7 @@ class RepoProfile(ABC, metaclass=SingletonMeta):
         import uuid
 
         client = docker.from_env()
+        proxy_env = _build_container_proxy_env(client)
         self.pull_image()
         instance_id = instance[KEY_INSTANCE_ID]
         # Use unique suffix to avoid container name conflicts in parallel execution
@@ -459,6 +549,7 @@ class RepoProfile(ABC, metaclass=SingletonMeta):
             command="tail -f /dev/null",
             platform="linux/x86_64",
             mem_limit="10g",
+            environment=proxy_env if proxy_env else None,
         )
         container.start()
         val = container.exec_run(
@@ -665,7 +756,22 @@ class Registry(UserDict):
     def get_from_inst(self, instance: dict) -> RepoProfile:
         """Get a profile class by a SWE-smith instance dict."""
         key = instance.get("repo", instance[KEY_INSTANCE_ID].rsplit(".", 1)[0])
-        return self.get(key)
+        if key in self.data:
+            return self.get(key)
+
+        # Accept org-prefixed mirror names from custom datasets,
+        # e.g. "my-org/owner__repo.commit" -> "owner__repo.commit".
+        if isinstance(key, str) and "/" in key:
+            _, suffix = key.split("/", 1)
+            if suffix in self.data:
+                return self.get(suffix)
+
+        # Fall back to instance_id prefix as a final compatibility path.
+        instance_prefix = instance[KEY_INSTANCE_ID].rsplit(".", 1)[0]
+        if instance_prefix in self.data:
+            return self.get(instance_prefix)
+
+        raise KeyError(f"No profile registered for key: {key}")
 
     def keys(self):
         return self.data.keys()

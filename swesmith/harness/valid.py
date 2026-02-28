@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 import threading
 
 from collections import defaultdict
@@ -31,6 +32,92 @@ from swesmith.constants import (
 from swesmith.harness.grading import get_valid_report
 from swesmith.harness.utils import run_patch_in_container, run_threadpool
 from swesmith.profiles import registry
+
+
+def _docker_image_exists(image_name: str | None) -> bool:
+    if not image_name:
+        return False
+    result = subprocess.run(
+        ["docker", "image", "inspect", image_name],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    return result.returncode == 0
+
+
+def _infer_image_name_from_local(repo: str) -> str | None:
+    """
+    Best-effort inference for pre-existing local images when org differs.
+    Example repo key: owner__repo.commit -> marker owner_1776_repo.commit
+    """
+    marker = repo.replace("__", "_1776_")
+    markers = {marker, marker.replace("-", "_")}
+    result = subprocess.run(
+        ["docker", "images", "--format", "{{.Repository}}:{{.Tag}}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if not line or ":" not in line:
+            continue
+        repository, tag = line.rsplit(":", 1)
+        if any(m in repository for m in markers):
+            if tag in {"latest", "<none>"}:
+                return repository
+            return f"{repository}:{tag}"
+    return None
+
+
+def _resolve_image_name(repo: str, explicit_image_name: str | None) -> str | None:
+    org_override = os.getenv("SWESMITH_ORG_DH", "").strip()
+    if explicit_image_name:
+        candidates: list[str] = []
+        if org_override and "/" in explicit_image_name:
+            _, remainder = explicit_image_name.split("/", 1)
+            candidates.append(f"{org_override}/{remainder}")
+        candidates.append(explicit_image_name)
+        candidates = list(dict.fromkeys(candidates))
+
+        for candidate in candidates:
+            if _docker_image_exists(candidate):
+                return candidate
+
+        inferred = _infer_image_name_from_local(repo)
+        if inferred:
+            print(
+                "Info: explicit image not found locally for "
+                f"{repo}; falling back to local image {inferred}."
+            )
+            return inferred
+
+        # Prefer org-overridden candidate (if provided), then explicit image.
+        return candidates[0]
+
+    profile_image = None
+    try:
+        profile_image = registry.get(repo).image_name
+    except Exception:
+        profile_image = None
+
+    if _docker_image_exists(profile_image):
+        return profile_image
+
+    inferred = _infer_image_name_from_local(repo)
+    if inferred:
+        if profile_image and inferred != profile_image:
+            print(
+                f"Info: repo {repo} profile image {profile_image} not found locally; "
+                f"falling back to local image {inferred}."
+            )
+        return inferred
+
+    return profile_image
 
 
 def print_report(log_dir: Path) -> None:
@@ -79,7 +166,6 @@ def run_validation(instance: dict) -> dict:
             LOG_DIR_RUN_VALIDATION,
             rp.timeout,
         )
-        close_logger(logger)
         if timed_out:
             logger.info(f"Timed out (pre-gold) for {instance_id}.")
             report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -88,6 +174,7 @@ def run_validation(instance: dict) -> dict:
                     json.dumps({KEY_TIMED_OUT: True, "timeout": rp.timeout}, indent=4)
                 )
             shutil.rmtree(valid_folder / ref_inst_id)
+            close_logger(logger)
             return {"status": "timeout"}
 
         # Copy pre-gold test output to the post-gold folder and remove the pre-gold folder
@@ -98,6 +185,11 @@ def run_validation(instance: dict) -> dict:
             val_postgold_path,
         )
         shutil.rmtree(valid_folder / ref_inst_id)
+        close_logger(logger)
+
+    val_pregold_path = valid_folder / instance_id / LOG_TEST_OUTPUT
+    if val_pregold_path.exists():
+        val_pregold_path.unlink()
 
     logger, timed_out = run_patch_in_container(
         instance,
@@ -114,7 +206,6 @@ def run_validation(instance: dict) -> dict:
         close_logger(logger)
         return {"status": "timeout"}
 
-    val_pregold_path = valid_folder / instance_id / LOG_TEST_OUTPUT
     if not val_pregold_path.exists():
         logger.info(f"Pre-gold for {instance_id} failed to run. Exiting early.")
         with open(report_path, "w") as f:
@@ -161,19 +252,35 @@ def main(
     print(f"Running validation for {bug_patches}...")
     with open(bug_patches, "r") as f:
         bug_patches = json.load(f)
-    bug_patches = [
-        {
-            **x,
-            KEY_PATCH: x.get(KEY_PATCH, x.get(KEY_PREDICTION)),
-        }
-        for x in bug_patches
-    ]
+    normalized_bug_patches = []
+    resolved_images: dict[str, str | None] = {}
+    for x in bug_patches:
+        repo = x.get("repo")
+        if repo and (
+            repo not in resolved_images
+            or (not resolved_images[repo] and x.get("image_name"))
+        ):
+            resolved_images[repo] = _resolve_image_name(repo, x.get("image_name"))
+        patch_image = resolved_images.get(repo) if repo else None
+        normalized_bug_patches.append(
+            {
+                **x,
+                KEY_PATCH: x.get(KEY_PATCH, x.get(KEY_PREDICTION)),
+                "image_name": patch_image,
+            }
+        )
+    bug_patches = normalized_bug_patches
     print(f"Found {len(bug_patches)} candidate patches.")
+    if len(bug_patches) == 0:
+        print("No candidate patches found in input file. Exiting.")
+        return
 
     completed = []
+    report_dirs = []
     for repo in set([bp["repo"] for bp in bug_patches]):
         log_dir_parent = LOG_DIR_RUN_VALIDATION / repo
         log_dir_parent.mkdir(parents=True, exist_ok=True)
+        report_dirs.append(log_dir_parent)
         if not redo_existing and log_dir_parent.exists():
             for folder in os.listdir(log_dir_parent):
                 # Identify completed instances (does report.json exist)
@@ -200,11 +307,21 @@ def main(
         rp = registry.get(repo)
         ref_inst = f"{rp.repo_name}{REF_SUFFIX}"
         ref_dir = LOG_DIR_RUN_VALIDATION / repo / ref_inst
+        if redo_existing and ref_dir.exists():
+            shutil.rmtree(ref_dir)
+        repo_image_name = next(
+            (bp.get("image_name") for bp in repo_bug_patches if bp.get("image_name")),
+            None,
+        )
         if not rp.min_pregold and not os.path.exists(ref_dir):
             # Run pytest for each repo/commit to get pre-gold behavior.
             print(f"Running pre-gold for {repo}...")
             logger, timed_out = run_patch_in_container(
-                {KEY_INSTANCE_ID: ref_inst},
+                {
+                    KEY_INSTANCE_ID: ref_inst,
+                    "repo": repo,
+                    "image_name": repo_image_name,
+                },
                 repo,
                 LOG_DIR_RUN_VALIDATION,
                 rp.timeout_ref,
@@ -225,7 +342,8 @@ def main(
     # Check if we have any payloads to process
     if len(payloads) == 0:
         print("No patches to run.")
-        print_report(log_dir_parent)
+        for report_dir in report_dirs:
+            print_report(report_dir)
         return
 
     # Initialize progress bar and stats
@@ -249,7 +367,8 @@ def main(
     pbar.close()
 
     print("All instances run.")
-    print_report(log_dir_parent)
+    for report_dir in report_dirs:
+        print_report(report_dir)
 
 
 if __name__ == "__main__":

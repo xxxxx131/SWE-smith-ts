@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "noEmit": true,
+    "outDir": "./dist/lib",
+    "target": "es5",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "lib": [],
+    "sourceMap": false,
+    "declaration": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "stripInternal": true,
+    "skipLibCheck": true,
+    "types": ["vitest/globals"],
+    "plugins": [
+      {
+        "name": "@effect/language-service"
+      }
+    ]
+  },
+  "include": ["./src", "./test", "./scripts", "./perf", "./dtslint"],
+  "exclude": ["./node_modules"]
+}

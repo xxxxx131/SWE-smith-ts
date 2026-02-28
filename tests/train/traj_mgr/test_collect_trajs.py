@@ -3,7 +3,10 @@ import os
 import tempfile
 
 from pathlib import Path
-from swesmith.train.traj_mgr.collect_trajs import main as collect_trajs
+from swesmith.train.traj_mgr.collect_trajs import (
+    _resolve_patch_text,
+    main as collect_trajs,
+)
 from swesmith.train.traj_mgr.utils import transform_traj_xml
 
 
@@ -99,3 +102,70 @@ def test_collect_trajs_basic(logs_trajectories, logs_run_evaluation, ft_xml_exam
 
         # Remove the output file
         output_path.unlink()
+
+
+def test_resolve_patch_text_prefers_pred_when_patch_missing():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        traj_dir = Path(tmpdir)
+        folder = "repo__name.commit.sample_id"
+        folder_dir = traj_dir / folder
+        folder_dir.mkdir(parents=True, exist_ok=True)
+
+        pred_patch = "diff --git a/src/a.ts b/src/a.ts\n"
+        (folder_dir / f"{folder}.pred").write_text(
+            json.dumps({"instance_id": folder, "model_patch": pred_patch})
+        )
+
+        assert _resolve_patch_text(folder, traj_dir) == pred_patch
+
+
+def test_resolve_patch_text_prefers_pred_when_mismatched():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        traj_dir = Path(tmpdir)
+        folder = "repo__name.commit.sample_id"
+        folder_dir = traj_dir / folder
+        folder_dir.mkdir(parents=True, exist_ok=True)
+
+        pred_patch = "diff --git a/src/a.ts b/src/a.ts\n"
+        legacy_patch = "diff --git a/src/b.ts b/src/b.ts\n"
+        (folder_dir / f"{folder}.pred").write_text(
+            json.dumps({"instance_id": folder, "model_patch": pred_patch})
+        )
+        (folder_dir / f"{folder}.patch").write_text(legacy_patch)
+
+        assert _resolve_patch_text(folder, traj_dir) == pred_patch
+
+
+def test_resolve_patch_text_falls_back_to_patch_file():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        traj_dir = Path(tmpdir)
+        folder = "repo__name.commit.sample_id"
+        folder_dir = traj_dir / folder
+        folder_dir.mkdir(parents=True, exist_ok=True)
+
+        legacy_patch = "diff --git a/src/b.ts b/src/b.ts\n"
+        (folder_dir / f"{folder}.patch").write_text(legacy_patch)
+
+        assert _resolve_patch_text(folder, traj_dir) == legacy_patch
+
+
+def test_transform_traj_xml_falls_back_to_history_when_query_malformed():
+    traj_data = {
+        "trajectory": [
+            {
+                "response": "Exit due to unknown error",
+                "query": [{}],
+            }
+        ],
+        "history": [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": [{"type": "text", "text": "hi"}]},
+            {"role": "assistant", "content": "failed before tool call"},
+        ],
+    }
+    transformed = transform_traj_xml(traj_data)
+    assert "messages" in transformed
+    assert len(transformed["messages"]) == 3
+    assert transformed["messages"][0]["role"] == "system"
+    assert transformed["messages"][1]["role"] == "user"
+    assert transformed["messages"][2]["role"] == "assistant"

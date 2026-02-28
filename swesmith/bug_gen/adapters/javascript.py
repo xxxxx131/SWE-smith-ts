@@ -64,7 +64,11 @@ class JavaScriptEntity(CodeEntity):
             self._tags.add(CodeProperty.HAS_RETURN)
         if n.type in ["import_statement", "import_clause"]:
             self._tags.add(CodeProperty.HAS_IMPORT)
-        if n.type in ["assignment_expression", "variable_declaration"]:
+        if n.type in [
+            "assignment_expression",
+            "variable_declaration",
+            "lexical_declaration",
+        ]:
             self._tags.add(CodeProperty.HAS_ASSIGNMENT)
         if n.type == "arrow_function":
             self._tags.add(CodeProperty.HAS_LAMBDA)

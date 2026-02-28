@@ -11,6 +11,7 @@ import argparse
 import docker
 import litellm
 import json
+import os
 import random
 import subprocess
 import yaml
@@ -19,6 +20,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datasets import load_dataset
 from litellm import completion, completion_cost
 from pathlib import Path
+from urllib.parse import urlparse, urlunparse
 from swebench.harness.constants import (
     DOCKER_USER,
     DOCKER_WORKDIR,
@@ -47,11 +49,9 @@ litellm.suppress_debug_info = True
 
 LOG_FILE_ISSUE = "issue_test.txt"
 LOG_FILE_METADATA = "metadata_test.json"
-SWEBV_PS = load_dataset("SWE-bench/SWE-bench_Verified", split="test")[
-    "problem_statement"
-]
+_SWEBV_PS_CACHE: list[str] | None = None
 TEST_INFO = """**Test Source Code**
-```python
+```
 {func}
 ```
 
@@ -62,16 +62,98 @@ TEST_INFO = """**Test Source Code**
 """
 
 
+def _get_demo_problem_statements() -> list[str]:
+    """Load demo issue texts with offline fallback."""
+    global _SWEBV_PS_CACHE
+    if _SWEBV_PS_CACHE is not None:
+        return _SWEBV_PS_CACHE
+    try:
+        _SWEBV_PS_CACHE = list(
+            load_dataset("SWE-bench/SWE-bench_Verified", split="test")[
+                "problem_statement"
+            ]
+        )
+    except Exception:
+        _SWEBV_PS_CACHE = [
+            "The function returns incorrect results on edge-case inputs involving empty collections.",
+            "Validation unexpectedly accepts invalid values instead of raising an error.",
+            "A nested object path is processed incorrectly and produces inconsistent output.",
+        ]
+    return _SWEBV_PS_CACHE
+
+
+def _get_bridge_gateway(client: docker.DockerClient) -> str | None:
+    """Return Docker bridge gateway IP when available."""
+    try:
+        net = client.networks.get("bridge")
+        ipam = net.attrs.get("IPAM", {}).get("Config", [])
+        if ipam and isinstance(ipam, list):
+            gateway = ipam[0].get("Gateway")
+            if gateway:
+                return str(gateway)
+    except Exception:
+        pass
+    return None
+
+
+def _rewrite_proxy_url_for_container(url: str, gateway_ip: str | None) -> str:
+    if not gateway_ip:
+        return url
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return url
+    if parsed.hostname not in {"127.0.0.1", "localhost"}:
+        return url
+
+    auth = ""
+    if parsed.username:
+        auth = parsed.username
+        if parsed.password:
+            auth += f":{parsed.password}"
+        auth += "@"
+    port = f":{parsed.port}" if parsed.port else ""
+    netloc = f"{auth}{gateway_ip}{port}"
+    return urlunparse(parsed._replace(netloc=netloc))
+
+
+def _build_container_proxy_env(client: docker.DockerClient) -> dict[str, str]:
+    proxy_keys = [
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "all_proxy",
+        "NO_PROXY",
+        "no_proxy",
+    ]
+    gateway_ip = _get_bridge_gateway(client)
+    env = {}
+    for key in proxy_keys:
+        val = os.getenv(key)
+        if not val:
+            continue
+        if key.lower().endswith("_proxy") and not key.lower().startswith("no_"):
+            env[key] = _rewrite_proxy_url_for_container(val, gateway_ip)
+        else:
+            env[key] = val
+    return env
+
+
 def get_verbose_test_cmd(instance: dict, rp: RepoProfile, test_idx: int | None = None):
     """
     Get test command that runs a random F2P test verbosely.
+    Supports both Python (pytest) and JavaScript/TypeScript (Jest/Vitest/Mocha) projects.
     """
     test_cmd = rp.test_cmd
-    # TODO: This should probably be changed, or incorporated into the profile
-    if test_cmd == PythonProfile.test_cmd:
-        test_cmd = test_cmd.replace(
-            PythonProfile.test_cmd, "pytest -v --showlocals --tb=long --color=no"
-        )
+    # Enhance Python test commands with verbose output
+    try:
+        if test_cmd == PythonProfile.test_cmd:
+            test_cmd = "pytest -v --showlocals --tb=long --color=no"
+    except Exception:
+        pass  # PythonProfile may not be available in non-Python contexts
+
     f2p_test = (
         random.choice(instance[FAIL_TO_PASS])
         if test_idx is None
@@ -87,6 +169,7 @@ def run_command_in_container(instance: dict, command: str, rp: RepoProfile):
     """
     container = None
     client = docker.from_env()
+    proxy_env = _build_container_proxy_env(client)
     instance_id = instance[KEY_INSTANCE_ID]
     image_name = instance[KEY_IMAGE_NAME]
 
@@ -100,6 +183,7 @@ def run_command_in_container(instance: dict, command: str, rp: RepoProfile):
         command="tail -f /dev/null",
         platform="linux/x86_64",
         mem_limit="10g",
+        environment=proxy_env if proxy_env else None,
     )
     container.start()
 
@@ -188,7 +272,7 @@ def _process_instance(instance: dict, config_file: str | None, model: str | None
             {"content": config["system"], "role": "system"},
             {
                 "content": config["demonstration"].format(
-                    **{"demo": random.choice(SWEBV_PS)}
+                    **{"demo": random.choice(_get_demo_problem_statements())}
                 ),
                 "role": "user",
             },

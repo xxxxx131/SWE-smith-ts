@@ -5,6 +5,26 @@ This module provides TypeScriptProfile base class and specific repository profil
 for TypeScript projects. TypeScriptProfile inherits from JavaScriptProfile to reuse
 Dockerfile templates, test log parsers, and other JavaScript-specific functionality.
 
+test_cmd Design Principle (aligned with Python profiles and original JS profiles):
+===================================================================================
+NEVER use generic `npm test` -- it is almost always a chain command in TS repos
+(lint && type-check && test && docs), where any non-test step failing breaks everything.
+
+Preferred patterns (in order of safety):
+  1. `npm run <specific-test-script>` -- uses the project's own script that directly
+     invokes the test runner. e.g. `npm run test:vitest`, `yarn test:ts-jest`.
+     This is the DOMINANT pattern in the original JS profiles (29/81 profiles).
+  2. `./node_modules/.bin/<runner>` -- directly calls the local binary. Fails fast
+     if not installed. Used by 4 original JS profiles.
+  3. `yarn <runner>` / `pnpm <runner>` -- calls via package manager. Used by 10/3
+     original JS profiles.
+
+AVOID:
+  - `npm test -- --verbose` -- runs the full chain, 28/81 original JS profiles use
+    this but it causes failures when chains include lint/dtslint/docs steps.
+  - `npx <runner>` -- silently downloads from npm if binary is missing locally,
+    potentially running an incompatible version. Only 3/81 original profiles use this.
+
 Created: 2026-02-03
 Phase: Phase 1 - TypeScript Environment Construction
 """
@@ -173,7 +193,7 @@ class ZodProfile(TypeScriptProfile):
     repo: str = "zod"
     commit: str = "v3.23.8"  # Stable release tag
     # Zod uses Jest via yarn, not Vitest
-    test_cmd: str = "yarn test:ts-jest --verbose"
+    test_cmd: str = "NODE_OPTIONS=--max-old-space-size=4096 yarn test:ts-jest --verbose --runInBand"
 
     @property
     def dockerfile(self) -> str:
@@ -202,11 +222,14 @@ class ValibotProfile(TypeScriptProfile):
     Repository: https://github.com/fabian-hiller/valibot
     Test Framework: Vitest
     Package Manager: npm
+    
+    package.json "test" script calls vitest directly, so npm run test is safe here.
     """
     owner: str = "fabian-hiller"
     repo: str = "valibot"
     commit: str = "v0.30.0"  # Stable release tag
-    test_cmd: str = "npm test -- --reporter verbose"
+    # valibot's "test" script is just "vitest" (no chain), safe to use npm run
+    test_cmd: str = "npm run test -- --reporter verbose"
 
     @property
     def dockerfile(self) -> str:
@@ -267,11 +290,14 @@ class CheerioProfile(TypeScriptProfile):
     Repository: https://github.com/cheeriojs/cheerio
     Test Framework: Jest
     Package Manager: npm
+    
+    Note: directly call jest to avoid potential npm test chain issues.
     """
     owner: str = "cheeriojs"
     repo: str = "cheerio"
     commit: str = "main"
-    test_cmd: str = "npm test -- --verbose"
+    # Use ./node_modules/.bin/ to fail fast if jest not installed (avoids npx download)
+    test_cmd: str = "./node_modules/.bin/jest --verbose --no-color"
 
     @property
     def dockerfile(self) -> str:
@@ -292,13 +318,17 @@ class IoTsProfile(TypeScriptProfile):
     Profile for gcanti/io-ts - Runtime type validation for TypeScript.
     
     Repository: https://github.com/gcanti/io-ts
-    Test Framework: Jest
+    Test Framework: Vitest (same author as fp-ts, migrated to vitest)
     Package Manager: npm
+    
+    Note: Same author as fp-ts (gcanti), same npm test chain pattern.
+    Directly calling vitest to avoid dtslint/lint chain failures.
     """
     owner: str = "gcanti"
     repo: str = "io-ts"
     commit: str = "master"
-    test_cmd: str = "npm test -- --verbose"
+    # io-ts has "vitest" script that runs "vitest run" directly (no chain)
+    test_cmd: str = "npm run vitest -- --reporter verbose"
 
     @property
     def dockerfile(self) -> str:
@@ -310,7 +340,8 @@ RUN npm install
 """
 
     def log_parser(self, log: str) -> dict[str, str]:
-        return parse_log_jest(log)
+        # FIXED: io-ts uses vitest (same ecosystem as fp-ts)
+        return parse_log_vitest(log)
 
 
 @dataclass
@@ -321,11 +352,14 @@ class NeverthrowProfile(TypeScriptProfile):
     Repository: https://github.com/supermacro/neverthrow
     Test Framework: Vitest
     Package Manager: npm
+    
+    Note: directly call vitest to avoid potential npm test chain issues.
     """
     owner: str = "supermacro"
     repo: str = "neverthrow"
     commit: str = "main"
-    test_cmd: str = "npm test -- --reporter verbose"
+    # Use ./node_modules/.bin/ to fail fast if vitest not installed
+    test_cmd: str = "./node_modules/.bin/vitest run --reporter verbose"
 
     @property
     def dockerfile(self) -> str:
@@ -352,11 +386,14 @@ class YupProfile(TypeScriptProfile):
     Repository: https://github.com/jquense/yup
     Test Framework: Jest
     Package Manager: npm
+    
+    Note: directly call jest to avoid potential npm test chain issues.
     """
     owner: str = "jquense"
     repo: str = "yup"
     commit: str = "master"
-    test_cmd: str = "npm test -- --verbose"
+    # Use ./node_modules/.bin/ to fail fast if jest not installed
+    test_cmd: str = "./node_modules/.bin/jest --verbose --no-color"
 
     @property
     def dockerfile(self) -> str:
@@ -377,13 +414,19 @@ class FpTsProfile(TypeScriptProfile):
     Profile for gcanti/fp-ts - Functional programming library.
     
     Repository: https://github.com/gcanti/fp-ts
-    Test Framework: Jest
+    Test Framework: Vitest (NOT Jest - the repo migrated to vitest)
     Package Manager: npm
+    
+    Note: npm test is a 5-step chain (lint && prettier && dtslint && vitest && docs).
+    dtslint fails due to TS 5.5 deprecating target:ES5 in tsconfig.json.
+    We bypass this by directly calling vitest.
     """
     owner: str = "gcanti"
     repo: str = "fp-ts"
     commit: str = "master"
-    test_cmd: str = "npm test -- --verbose"
+    # fp-ts has "vitest" script that runs "vitest run" directly (no chain)
+    # DO NOT use "npm test" -- it's a 5-step chain that breaks at dtslint
+    test_cmd: str = "npm run vitest -- --reporter verbose"
 
     @property
     def dockerfile(self) -> str:
@@ -395,7 +438,8 @@ RUN npm install
 """
 
     def log_parser(self, log: str) -> dict[str, str]:
-        return parse_log_jest(log)
+        # FIXED: fp-ts uses vitest, not jest
+        return parse_log_vitest(log)
 
 
 # =============================================================================

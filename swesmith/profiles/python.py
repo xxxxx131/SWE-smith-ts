@@ -1,5 +1,6 @@
 import docker
 import re
+import shlex
 from dataclasses import dataclass, field
 
 from pathlib import Path
@@ -12,7 +13,7 @@ from swebench.harness.constants import (
 from swebench.harness.docker_build import build_image as build_image_sweb
 from swebench.harness.dockerfiles import get_dockerfile_env
 from swesmith.constants import LOG_DIR_ENV, ENV_NAME, INSTANCE_REF, ORG_NAME_DH
-from swesmith.profiles.base import RepoProfile, registry
+from swesmith.profiles.base import RepoProfile, registry, _build_container_proxy_env
 from swesmith.profiles.utils import INSTALL_BAZEL, INSTALL_CMAKE
 
 
@@ -50,12 +51,15 @@ class PythonProfile(RepoProfile):
         PATH_TO_REQS = "swesmith_environment.yml"
 
         client = docker.from_env()
+        proxy_env = _build_container_proxy_env(client)
+        proxy_exports = [f"export {k}={shlex.quote(v)}" for k, v in proxy_env.items()]
         with open(self._env_yml) as f:
             reqs = f.read()
 
         setup_commands = [
             "#!/bin/bash",
             "set -euxo pipefail",
+            *proxy_exports,
             f"git clone -o origin https://github.com/{self.mirror_name} /{ENV_NAME}",
             f"cd /{ENV_NAME}",
             "source /opt/miniconda3/bin/activate",

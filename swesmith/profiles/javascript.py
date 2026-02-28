@@ -8,6 +8,50 @@ from swesmith.profiles.utils import X11_DEPS
 from unidiff import PatchSet
 
 
+ANSI_ESCAPE_RE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
+TEST_FILE_EXTS = (".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs")
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences from terminal output."""
+    return ANSI_ESCAPE_RE.sub("", text)
+
+
+def _looks_like_file_path(text: str) -> bool:
+    stripped = text.strip()
+    return any(stripped.endswith(ext) for ext in TEST_FILE_EXTS)
+
+
+STATUS_RANK = {
+    TestStatus.SKIPPED.value: 1,
+    TestStatus.PASSED.value: 2,
+    TestStatus.FAILED.value: 3,
+}
+
+
+def _set_status_with_priority(
+    test_status_map: dict[str, str], test_name: str, new_status: str
+) -> None:
+    """Keep the strongest status for a test name (FAILED > PASSED > SKIPPED)."""
+    current = test_status_map.get(test_name)
+    if current is None or STATUS_RANK[new_status] > STATUS_RANK[current]:
+        test_status_map[test_name] = new_status
+
+
+def _looks_like_non_test_noise(text: str) -> bool:
+    """Filter out assertion/debug lines that are not test or suite names."""
+    lowered = text.strip().lower()
+    noisy_prefixes = (
+        "expected:",
+        "received:",
+        "difference:",
+        "snapshot:",
+        "error:",
+        "at ",
+    )
+    return lowered.startswith(noisy_prefixes)
+
+
 @dataclass
 class JavaScriptProfile(RepoProfile):
     """
@@ -19,7 +63,7 @@ class JavaScriptProfile(RepoProfile):
     def extract_entities(
         self,
         dirs_exclude: list[str] = None,
-        dirs_include: list[str] = [],
+        dirs_include: list[str] | None = None,
         exclude_tests: bool = True,
         max_entities: int = -1,
     ) -> list:
@@ -42,6 +86,8 @@ class JavaScriptProfile(RepoProfile):
                 "docs",
                 "bin",
             ]
+        if dirs_include is None:
+            dirs_include = []
 
         return super().extract_entities(
             dirs_exclude=dirs_exclude,
@@ -49,6 +95,34 @@ class JavaScriptProfile(RepoProfile):
             exclude_tests=exclude_tests,
             max_entities=max_entities,
         )
+
+    def get_test_files(self, instance: dict) -> tuple[list[str], list[str]]:
+        """
+        Given an instance, return files corresponding to F2P and P2P test files.
+
+        JavaScript/TypeScript test names can be either:
+        - File paths: "test/foo.test.ts" (Vitest file-level reporting)
+        - Test names: "should validate input" (Jest/Mocha test-level reporting)
+
+        We extract file paths that look like test files; non-path test names are ignored
+        since they can't be used for file-level operations (e.g., removal in gather.py).
+        """
+        from swebench.harness.constants import FAIL_TO_PASS, PASS_TO_PASS
+
+        test_file_exts = (".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs")
+
+        def _extract_test_paths(test_names: list[str]) -> list[str]:
+            paths = []
+            for name in test_names:
+                # Only treat entries with file extensions as file paths
+                if any(name.rstrip().endswith(ext) for ext in test_file_exts):
+                    paths.append(name.strip())
+            return paths
+
+        f2p_tests = instance.get(FAIL_TO_PASS, [])
+        p2p_tests = instance.get(PASS_TO_PASS, [])
+
+        return _extract_test_paths(f2p_tests), _extract_test_paths(p2p_tests)
 
 
 def default_npm_install_dockerfile(mirror_name: str, node_version: str = "18") -> str:
@@ -71,18 +145,41 @@ def parse_log_jest(log: str) -> dict[str, str]:
     """
     test_status_map = {}
 
-    pattern = r"^\s*(✓|✕|○)\s(.+?)(?:\s\((\d+\s*m?s)\))?$"
+    # Test-level lines (requires --verbose)
+    test_pattern = r"^\s*(✓|✔|✕|✖|×|○)\s+(.+?)(?:\s\((\d+\s*m?s)\))?$"
+    # Suite-level lines (common when TS compile errors abort test bodies)
+    suite_pattern = r"^\s*(PASS|FAIL)\s+(.+?)(?:\s+\([\d.]+\s*s\))?$"
+    symbol_to_status = {
+        "✓": TestStatus.PASSED.value,
+        "✔": TestStatus.PASSED.value,
+        "✕": TestStatus.FAILED.value,
+        "✖": TestStatus.FAILED.value,
+        "×": TestStatus.FAILED.value,
+        "○": TestStatus.SKIPPED.value,
+    }
 
-    for line in log.split("\n"):
-        match = re.match(pattern, line.strip())
+    for raw_line in log.split("\n"):
+        line = _strip_ansi(raw_line).strip()
+        match = re.match(test_pattern, line)
         if match:
             status_symbol, test_name, _duration = match.groups()
-            if status_symbol == "✓":
-                test_status_map[test_name] = TestStatus.PASSED.value
-            elif status_symbol == "✕":
-                test_status_map[test_name] = TestStatus.FAILED.value
-            elif status_symbol == "○":
-                test_status_map[test_name] = TestStatus.SKIPPED.value
+            _set_status_with_priority(
+                test_status_map, test_name, symbol_to_status[status_symbol]
+            )
+            continue
+
+        suite_match = re.match(suite_pattern, line)
+        if suite_match:
+            status, suite_name = suite_match.groups()
+            suite_name = suite_name.strip()
+            if _looks_like_file_path(suite_name):
+                _set_status_with_priority(
+                    test_status_map,
+                    suite_name,
+                    TestStatus.PASSED.value
+                    if status == "PASS"
+                    else TestStatus.FAILED.value
+                )
     return test_status_map
 
 
@@ -93,8 +190,9 @@ def parse_log_mocha(log: str) -> dict[str, str]:
     pattern = r"^\s*([✓✔]|✖|-)\s(.+?)(?:\s\((\d+\s*m?s)\))?$"
     # Pattern for numbered failures like "1) test name" or "1) should solve..."
     fail_pattern = r"^\s*\d+\)\s+(.+?)(?:\s\((\d+\s*m?s)\))?$"
-    for line in log.split("\n"):
-        match = re.match(pattern, line.strip())
+    for raw_line in log.split("\n"):
+        line = _strip_ansi(raw_line).strip()
+        match = re.match(pattern, line)
         if match:
             status_symbol, test_name, _duration = match.groups()
             if status_symbol in ("✓", "✔"):
@@ -105,7 +203,7 @@ def parse_log_mocha(log: str) -> dict[str, str]:
                 test_status_map[test_name] = TestStatus.SKIPPED.value
         else:
             # Try numbered failure pattern
-            fail_match = re.match(fail_pattern, line.strip())
+            fail_match = re.match(fail_pattern, line)
             if fail_match:
                 test_name = fail_match.group(1)
                 test_status_map[test_name] = TestStatus.FAILED.value
@@ -120,13 +218,12 @@ def parse_log_vitest(log: str) -> dict[str, str]:
         (r"^❯\s+(.+?)(?:\s+\(.*?\))?$", TestStatus.FAILED.value),  # Failed test files
         (r"^✗\s+(.+?)(?:\s+\([\.\d]+ms\))?$", TestStatus.FAILED.value),
         (r"^○\s+(.+?)(?:\s+\([\.\d]+ms\))?$", TestStatus.SKIPPED.value),
-        (r"^✓\s+(.+?)$", TestStatus.PASSED.value),
-        (r"^✗\s+(.+?)$", TestStatus.FAILED.value),
-        (r"^○\s+(.+?)$", TestStatus.SKIPPED.value),
     ]
-    for line in log.split("\n"):
+    suite_pattern = r"^\s*(PASS|FAIL)\s+(.+?)(?:\s+\[.*\])?(?:\s+\([\d.]+\s*s\))?$"
+    for raw_line in log.split("\n"):
+        line = _strip_ansi(raw_line).strip()
         for pattern, status in patterns:
-            match = re.match(pattern, line.strip())
+            match = re.match(pattern, line)
             if match:
                 test_name = match.group(1).strip()
                 # Normalize test file names: extract just the file path before parentheses
@@ -134,8 +231,23 @@ def parse_log_vitest(log: str) -> dict[str, str]:
                 # or "test/foo.test.js (9 tests | 5 failed) 22ms" -> "test/foo.test.js"
                 if "(" in test_name:
                     test_name = test_name.split("(")[0].strip()
-                test_status_map[test_name] = status
+                if _looks_like_non_test_noise(test_name):
+                    continue
+                _set_status_with_priority(test_status_map, test_name, status)
                 break
+        else:
+            suite_match = re.match(suite_pattern, line)
+            if suite_match:
+                suite_status, suite_name = suite_match.groups()
+                suite_name = suite_name.strip()
+                if _looks_like_file_path(suite_name):
+                    _set_status_with_priority(
+                        test_status_map,
+                        suite_name,
+                        TestStatus.PASSED.value
+                        if suite_status == "PASS"
+                        else TestStatus.FAILED.value
+                    )
 
     return test_status_map
 
@@ -218,6 +330,31 @@ def parse_log_jasmine(log: str) -> dict[str, str]:
 
             break  # Only process the first summary line
 
+    return test_status_map
+
+
+def parse_log_qunit(log: str) -> dict[str, str]:
+    """
+    Parser for QUnit output.
+
+    Supports common formats:
+    - ok 1 test name
+    - not ok 2 test name
+    """
+    test_status_map = {}
+    line_pattern = r"^(ok|not ok)\s+\d+\s+(.+)$"
+
+    for raw_line in log.split("\n"):
+        line = _strip_ansi(raw_line).strip()
+        match = re.match(line_pattern, line, flags=re.IGNORECASE)
+        if not match:
+            continue
+        status_token, test_name = match.groups()
+        test_status_map[test_name.strip()] = (
+            TestStatus.PASSED.value
+            if status_token.lower() == "ok"
+            else TestStatus.FAILED.value
+        )
     return test_status_map
 
 

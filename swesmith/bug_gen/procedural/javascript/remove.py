@@ -2,13 +2,9 @@
 JavaScript remove modifiers for procedural bug generation using tree-sitter.
 """
 
-import tree_sitter_javascript as tsjs
 from swesmith.bug_gen.procedural.base import CommonPMs
-from swesmith.bug_gen.procedural.javascript.base import JavaScriptProceduralModifier
+from swesmith.bug_gen.procedural.javascript.base import JavaScriptProceduralModifier, get_parser_for_entity
 from swesmith.constants import BugRewrite, CodeEntity, CodeProperty
-from tree_sitter import Language, Parser
-
-JS_LANGUAGE = Language(tsjs.language())
 
 
 class RemoveLoopModifier(JavaScriptProceduralModifier):
@@ -21,7 +17,7 @@ class RemoveLoopModifier(JavaScriptProceduralModifier):
     def modify(self, code_entity: CodeEntity) -> BugRewrite:
         """Remove a loop from the code."""
         # Parse the code
-        parser = Parser(JS_LANGUAGE)
+        parser = get_parser_for_entity(code_entity)
         tree = parser.parse(bytes(code_entity.src_code, "utf8"))
 
         # Find and remove loop statements
@@ -80,7 +76,7 @@ class RemoveConditionalModifier(JavaScriptProceduralModifier):
     def modify(self, code_entity: CodeEntity) -> BugRewrite:
         """Remove an if statement from the code."""
         # Parse the code
-        parser = Parser(JS_LANGUAGE)
+        parser = get_parser_for_entity(code_entity)
         tree = parser.parse(bytes(code_entity.src_code, "utf8"))
 
         # Find and remove conditional statements
@@ -133,7 +129,7 @@ class RemoveAssignmentModifier(JavaScriptProceduralModifier):
     def modify(self, code_entity: CodeEntity) -> BugRewrite:
         """Remove an assignment statement from the code."""
         # Parse the code
-        parser = Parser(JS_LANGUAGE)
+        parser = get_parser_for_entity(code_entity)
         tree = parser.parse(bytes(code_entity.src_code, "utf8"))
 
         # Find and remove assignment statements
@@ -157,6 +153,7 @@ class RemoveAssignmentModifier(JavaScriptProceduralModifier):
             if n.type in [
                 "assignment_expression",
                 "variable_declaration",
+                "lexical_declaration",
                 "augmented_assignment_expression",
             ]:
                 if self.flip():
@@ -204,7 +201,7 @@ class RemoveTernaryModifier(JavaScriptProceduralModifier):
 
     def modify(self, code_entity: CodeEntity) -> BugRewrite:
         """Remove ternary expressions by replacing with one of the branches."""
-        parser = Parser(JS_LANGUAGE)
+        parser = get_parser_for_entity(code_entity)
         tree = parser.parse(bytes(code_entity.src_code, "utf8"))
 
         modified_code = self._remove_ternary(code_entity.src_code, tree.root_node)

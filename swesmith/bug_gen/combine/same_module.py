@@ -30,10 +30,13 @@ EXCLUDED_BUG_TYPES = ["func_basic", "combine_file", "combine_module", "pr_mirror
 
 
 def convert_to_path(folder: str):
-    DUNDER_PATTERN = r"____[a-zA-z\d]+__\.py$"
+    # Match dunder patterns for any supported source file extension
+    DUNDER_PATTERN = r"____[a-zA-z\d]+__\.\w+$"
     path = "/".join(folder.split("__")[2:])  # Exclude <repo>__<commit>
     if re.search(DUNDER_PATTERN, folder):
-        path = path.replace("//", "/__").replace("/.py", "__.py")
+        # Restore dunder filenames for any extension (e.g., .py, .ts, .js)
+        path = re.sub(r"//", "/__", path)
+        path = re.sub(r"/(\.\w+)$", r"__\1", path)
     return path
 
 
@@ -142,7 +145,8 @@ def main(
         current = map_path_to_patches
         for p in path:
             if p not in current:
-                if p.endswith(".py"):
+                # Detect source files by extension (Python, JS, TS, etc.)
+                if "." in p and p.rsplit(".", 1)[-1] in ("py", "js", "jsx", "ts", "tsx", "go", "rs"):
                     current[p] = []
                     break
                 current[p] = {}
@@ -170,7 +174,10 @@ def main(
             if not include_invalid_patches
             and x.split(f"{PREFIX_BUG}__")[-1].split(".diff")[0] in validated_inst_ids
         ]
-        if k.endswith(".py") or len(map_path_to_patches[k]) == 0:
+        # Skip individual source files (they belong to same_file, not same_module)
+        # and skip empty patch lists
+        source_exts = (".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs")
+        if any(k.endswith(ext) for ext in source_exts) or len(map_path_to_patches[k]) == 0:
             del map_path_to_patches[k]
 
     if map_path_to_patches == {}:
