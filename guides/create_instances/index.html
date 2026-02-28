@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/swesmith_logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
     
     
       
@@ -1254,7 +1254,8 @@ Identical to LM Generated task instances, but the artifacts are instead named:</
 <p>Where <code>&lt;name&gt;</code> refers to the specific identifier for the procedural modification technique.
 There are 13 (and counting) in total.</p>
 <h3 id="running-at-scale-on-modal">Running at Scale on Modal</h3>
-<p>For generating and validating bugs across many repositories, use the <code>scripts/bug_gen.py</code> script which runs on <a href="https://modal.com">Modal</a> for scalable cloud execution.</p>
+<p>For generating and validating bugs across many repositories, use the <code>scripts/bug_gen.py</code> script which runs on <a href="https://modal.com">Modal</a> for scalable cloud execution.
+(<code>scripts/bug_gen_modal.py</code> is kept as a backward-compatible entrypoint.)</p>
 <p><strong>Basic Usage</strong></p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Generate + validate bugs for all JavaScript repos</span>
 modal<span class="w"> </span>run<span class="w"> </span>scripts/bug_gen.py<span class="w"> </span>--language<span class="w"> </span>javascript

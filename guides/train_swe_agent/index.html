@@ -18,7 +18,7 @@
       
       
       <link rel="icon" href="../../assets/swesmith_logo.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
     
     
       
@@ -107,7 +107,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#training-swe-agents" class="md-skip">
+        <a href="#swe-agent" class="md-skip">
           Skip to content
         </a>
       
@@ -887,10 +887,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#creating-swe-smith-subset" class="md-nav__link">
+  <a href="#swe-smith" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Creating SWE-smith Subset
+        构建 SWE-smith 子集
       
     </span>
   </a>
@@ -898,10 +898,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#generate-expert-trajectories" class="md-nav__link">
+  <a href="#_1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Generate Expert Trajectories
+        生成专家轨迹
       
     </span>
   </a>
@@ -909,10 +909,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#train-model" class="md-nav__link">
+  <a href="#_2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Train Model
+        训练模型
       
     </span>
   </a>
@@ -920,13 +920,85 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#evaluation" class="md-nav__link">
+  <a href="#_3" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Evaluation
+        评估
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        本地训练（不使用 Modal）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="本地训练（不使用 Modal）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-sft-jsonl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1）将轨迹转换为 SFT jsonl
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2）准备本地训练配置
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-sft" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3）执行本地 SFT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-checkpoint-swe-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4）启动本地 checkpoint 服务（可选，用于 SWE-agent 评测）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-swe-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5）运行 SWE-agent 推理与评估
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1062,10 +1134,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#creating-swe-smith-subset" class="md-nav__link">
+  <a href="#swe-smith" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Creating SWE-smith Subset
+        构建 SWE-smith 子集
       
     </span>
   </a>
@@ -1073,10 +1145,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#generate-expert-trajectories" class="md-nav__link">
+  <a href="#_1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Generate Expert Trajectories
+        生成专家轨迹
       
     </span>
   </a>
@@ -1084,10 +1156,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#train-model" class="md-nav__link">
+  <a href="#_2" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Train Model
+        训练模型
       
     </span>
   </a>
@@ -1095,13 +1167,85 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#evaluation" class="md-nav__link">
+  <a href="#_3" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Evaluation
+        评估
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        本地训练（不使用 Modal）
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="本地训练（不使用 Modal）">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-sft-jsonl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1）将轨迹转换为 SFT jsonl
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2）准备本地训练配置
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-sft" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3）执行本地 SFT
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-checkpoint-swe-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4）启动本地 checkpoint 服务（可选，用于 SWE-agent 评测）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-swe-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5）运行 SWE-agent 推理与评估
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1131,25 +1275,26 @@
   
 
 
-<h1 id="training-swe-agents">Training SWE-agents</h1>
-<p>Now the fun part - we provide details on how to operationalize SWE-smith for training SWE-agents!</p>
-<p>Specifically, we'll cover the workflow for Rejection Sampling Fine Tuning.</p>
+<h1 id="swe-agent">训练 SWE-agent</h1>
+<p>下面进入关键部分：如何使用 SWE-smith 训练 SWE-agent。</p>
+<p>本节重点介绍基于拒绝采样的监督微调（RSFT）流程。</p>
 <div class="admonition note">
 <p class="admonition-title">SWE-agent</p>
-<p>The documentation in this section is heavily grounded in the <a href="https://github.com/SWE-agent/SWE-agent">SWE-agent</a> library.
-We do <em>not</em> plan to explicitly support non SWE-agent scaffolds, but it should not be difficult - the main adaptations would just be how you generate expert trajectories and predictions for evaluation.</p>
+<p>本节文档基于 <a href="https://github.com/SWE-agent/SWE-agent">SWE-agent</a> 的工作流。
+我们暂不显式支持非 SWE-agent 脚手架，但迁移通常不难，主要需要改动的是专家轨迹生成与评测预测文件的对接方式。</p>
 </div>
-<p>There's several steps we'll cover:</p>
+<p>整体包含以下步骤：</p>
 <ol>
-<li>Creating a subset of SWE-smith task instances.</li>
-<li>Generating expert trajectories for those task instances.</li>
-<li>Training a model on the expert trajectories.</li>
-<li>Evaluating the model on SWE-bench (Lite/Verified/Multimodal).</li>
+<li>构建 SWE-smith 任务子集；</li>
+<li>为子集生成专家轨迹；</li>
+<li>用专家轨迹训练模型；</li>
+<li>在 SWE-bench（Lite/Verified/Multimodal）上评估模型。</li>
 </ol>
-<h2 id="creating-swe-smith-subset">Creating SWE-smith Subset</h2>
-<p>If you are using SWE-smith, the dataset of all <a href="https://huggingface.co/datasets/SWE-bench/SWE-smith">SWE-smith</a> is quite large.
-Usually, we recommend training on a subset.
-To curate a subset, you might use the following logic.</p>
+<p>如果你需要直接复用“任务实例 -&gt; 轨迹/SFT -&gt; 本地 SFT”的参数化命令模板，可先看：
+<code>docs/guides/ts_three_pipelines.md</code></p>
+<h2 id="swe-smith">构建 SWE-smith 子集</h2>
+<p>如果你直接使用完整的 <a href="https://huggingface.co/datasets/SWE-bench/SWE-smith">SWE-smith</a> 数据集，规模会比较大。
+通常建议先筛选出一个更可控的训练子集。示例逻辑如下：</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dataset</span>
@@ -1165,80 +1310,115 @@ To curate a subset, you might use the following logic.</p>
 <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="sa">f</span><span class="s2">"logs/experiments/</span><span class="si">{</span><span class="n">subset_name</span><span class="si">}</span><span class="s2">.json"</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
     <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">bugs</span><span class="p">,</span> <span class="n">fp</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 </code></pre></div>
-<h2 id="generate-expert-trajectories">Generate Expert Trajectories</h2>
+<h2 id="_1">生成专家轨迹</h2>
 <ol>
 <li>
-<p>Clone <a href="https://github.com/SWE-agent/SWE-agent">SWE-agent</a>. Make sure to follow the installation instructions <a href="https://swe-agent.com/latest/installation/source/">here</a>.</p>
+<p>克隆 <a href="https://github.com/SWE-agent/SWE-agent">SWE-agent</a>，并按其官方安装文档完成环境配置。</p>
 </li>
 <li>
-<p>Create a soft link of the <code>agent/</code> folder to SWE-agent, meaning in SWE-agent, run:
+<p>在 SWE-agent 仓库中创建到 <code>SWE-smith/agent/</code> 的软链接：
 </p><div class="highlight"><pre><span></span><code>ln<span class="w"> </span>-s<span class="w"> </span>path/to/SWE-smith/agent/<span class="w"> </span>.
 </code></pre></div><p></p>
 </li>
 <li>
-<p>In SWE-agent, run exeprt trajectory generation:
+<p>在 SWE-agent 中运行专家轨迹生成：
 </p><div class="highlight"><pre><span></span><code>./agent/_gen_trajs.sh
-</code></pre></div>
-Check the file to see how the script works. You'll need to adjust the <code>--instances.path</code> argument to point to the subset you created in the previous step.<p></p>
+</code></pre></div><p></p>
 </li>
 </ol>
-<h2 id="train-model">Train Model</h2>
-<p>The previous step will generate individual trajectories per task instance under the <code>SWE-agent/trajectories/&lt;username&gt;/&lt;run ID&gt;/</code> folder.</p>
-<p>We'll now determine which trajectories correspond to resolved instances, convert them to a format that can be used for SFT, and then train a model with them.</p>
-<ol>
-<li>(From SWE-smith) Run evaluation on training task instances.
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>swesmith.harness.eval<span class="w"> </span><span class="se">\</span>
+<p>请根据该脚本内容调整 <code>--instances.path</code>，指向你上一步生成的子集文件。</p>
+<h2 id="_2">训练模型</h2>
+<p>上一步会在 <code>SWE-agent/trajectories/&lt;username&gt;/&lt;run ID&gt;/</code> 下生成每个任务实例的轨迹目录。</p>
+<p>接下来我们要筛选出已解决（resolved）的轨迹，转换为 SFT 可用格式，再执行训练。</p>
+<p>1.（在 SWE-smith 中）先对训练任务运行评测：
+</p><div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>swesmith.harness.eval<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--dataset_path<span class="w"> </span>path/to/subset0.json<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--predictions_path<span class="w"> </span>path/to/trajectories/&lt;username&gt;/&lt;run<span class="w"> </span>ID&gt;/preds.json<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--run_id<span class="w"> </span>&lt;run<span class="w"> </span>ID&gt;<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--workers<span class="w"> </span><span class="m">10</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--timeout<span class="w"> </span><span class="m">240</span>
-</code></pre></div></li>
-</ol>
+</code></pre></div><p></p>
 <div class="admonition tip">
 <p class="admonition-title"><code>preds.json</code></p>
-<p>If there is no <code>preds.json</code>, run <code>sweagent merge-preds trajectories/&lt;username&gt;/&lt;run ID&gt;/</code>.</p>
+<p>如果没有 <code>preds.json</code>，可先执行：<code>sweagent merge-preds trajectories/&lt;username&gt;/&lt;run ID&gt;/</code>。</p>
 </div>
-<p>This evaluation will generate a <code>logs/run_evaluation/&lt;run ID&gt;/</code>
-folder with a <code>report.json</code> file indicating which instance IDs were successfully resolved.</p>
-<ol start="2">
-<li>(From SWE-smith) Convert trajectories into SFT format.</li>
-</ol>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>swesmith.train.traj_mgr.collect_trajs<span class="w"> </span><span class="se">\</span>
+<p>评测会生成 <code>logs/run_evaluation/&lt;run ID&gt;/</code>，其中 <code>report.json</code> 标记了哪些实例成功解决。</p>
+<p>2.（在 SWE-smith 中）把轨迹转换为 SFT 格式：
+</p><div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>swesmith.train.traj_mgr.collect_trajs<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--traj_dir<span class="w"> </span>path/to/trajectories/&lt;username&gt;/&lt;run<span class="w"> </span>ID&gt;/<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--eval_dir<span class="w"> </span>logs/run_evaluation/&lt;run<span class="w"> </span>ID&gt;/
-</code></pre></div>
-<p>This will product an <code>ft_xml_*.jsonl</code> file under the <code>trajectories_sft/</code> folder.
-This dataset can be used directly for SFT.</p>
-<ol start="3">
-<li>Run training. First, upload the file to Modal
-<div class="highlight"><pre><span></span><code>modal<span class="w"> </span>volume<span class="w"> </span>put<span class="w"> </span>&lt;volume&gt;<span class="w"> </span>trajectories_sft/ft_xml_*.jsonl
-</code></pre></div></li>
-</ol>
-<p>Then, modify <code>config/train/full_ft_qwen_7b.yml</code> to point to the file in Modal.</p>
-<p>Finally, run the training script:
-</p><div class="highlight"><pre><span></span><code>./scripts/train.run_ft_torchtune.py
 </code></pre></div><p></p>
-<h2 id="evaluation">Evaluation</h2>
-<p>Run inference on SWE-agent + your SFT'ed model on SWE-bench (Lite/Verified/Multimodal).</p>
-<ol>
-<li>
-<p>(From SWE-smith) Update <code>scripts/train.serve_sglang.sh</code> to point at SFT'ed model, then run it.</p>
-</li>
-<li>
-<p>(From SWE-agent) Run inference:
+<p>该步骤会在 <code>trajectories_sft/</code> 下产出 <code>&lt;run_id&gt;.xml.jsonl</code>（文件名来自 <code>eval_dir</code> 目录名），可直接用于 SFT。</p>
+<p>3.（原仓库云端流程）先上传到 Modal，再训练：
+</p><div class="highlight"><pre><span></span><code>modal<span class="w"> </span>volume<span class="w"> </span>put<span class="w"> </span>&lt;volume&gt;<span class="w"> </span>trajectories_sft/&lt;run_id&gt;.xml.jsonl
+</code></pre></div><p></p>
+<p>然后修改 <code>configs/train/full_ft_qwen_7b.yml</code> 指向 Modal 上的数据文件，最后执行训练脚本：
+</p><div class="highlight"><pre><span></span><code>./scripts/train_run_ft_torchtune.sh
+</code></pre></div><p></p>
+<h2 id="_3">评估</h2>
+<p>在 SWE-agent + SFT 后模型上运行 SWE-bench（Lite/Verified/Multimodal）评估。</p>
+<p>1.（在 SWE-smith 中）修改 <code>scripts/train_serve_sglang.sh</code> 指向训练后模型并启动服务。</p>
+<p>2.（在 SWE-agent 中）执行推理：
 </p><div class="highlight"><pre><span></span><code>./agent/_infer_model.sh
-</code></pre></div>
-Make sure the Modal URL is correct and change the evaluation dataset as desired.<p></p>
-</li>
-<li>
-<p>When inference finishes, run evaluation on the model's predictions. (Check out <a href="https://github.com/SWE-bench/sb-cli/tree/main">sb-cli</a> for more information on how to conveniently run evaluation for SWE-bench-* datasets.)
-</p><div class="highlight"><pre><span></span><code>sb-cli<span class="w"> </span>submit<span class="w"> </span>swe-bench_verified<span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="se">\</span>
+</code></pre></div><p></p>
+<p>请确认服务 URL 正确，并按需切换评测数据集。</p>
+<ol start="3">
+<li>推理完成后，提交评测（可参考 <a href="https://github.com/SWE-bench/sb-cli/tree/main">sb-cli</a>）：
+<div class="highlight"><pre><span></span><code>sb-cli<span class="w"> </span>submit<span class="w"> </span>swe-bench_verified<span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--predictions_path<span class="w"> </span>trajectories/&lt;username&gt;/&lt;run<span class="w"> </span>ID&gt;/preds.json<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--run_id<span class="w"> </span>&lt;run<span class="w"> </span>ID&gt;
-</code></pre></div><p></p>
-</li>
+</code></pre></div></li>
 </ol>
+<h2 id="modal">本地训练（不使用 Modal）</h2>
+<p>你可以在本机完整执行同样的 SFT 流程。仓库已提供 <code>Qwen2.5-Coder-7B-Instruct</code> 的本地脚本与配置。</p>
+<h3 id="1-sft-jsonl">1）将轨迹转换为 SFT jsonl</h3>
+<div class="highlight"><pre><span></span><code>./scripts/train_prepare_sft_local.sh<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/path/to/SWE-agent/trajectories/&lt;user&gt;/&lt;run_id&gt;/<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>logs/run_evaluation/&lt;run_id&gt;/<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>xml
+</code></pre></div>
+<p>该脚本会封装：
+- <code>python -m swesmith.train.traj_mgr.collect_trajs ...</code>
+- 可选长度统计校验（当你显式传入 <code>STATS_FILE</code> 时）：
+  <code>python -m swesmith.train.traj_mgr.validate_len_stats ...</code></p>
+<p>默认行为：
+- 输出目录：<code>trajectories_sft/</code>
+- 若未设置 <code>STATS_FILE</code>，会跳过长度统计校验。</p>
+<h3 id="2">2）准备本地训练配置</h3>
+<p>使用 <code>configs/train/full_ft_qwen_7b_local.yml</code>。使用前需替换其中的占位符路径：
+- <code>dataset.data_files</code>: 指向你的 resolved SFT JSONL 文件
+- <code>output_dir</code>: 训练输出目录
+- <code>&lt;MODEL_DIR&gt;</code>: 基础模型目录（如 <code>Qwen2.5-Coder-7B-Instruct</code>）</p>
+<p>配置默认值：
+- <code>max_seq_len: 32768</code>
+- <code>packed: False</code>
+- <code>conversation_style: openai</code></p>
+<h3 id="3-sft">3）执行本地 SFT</h3>
+<div class="highlight"><pre><span></span><code><span class="nv">N_GPUS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="nv">CONFIG_PATH</span><span class="o">=</span>configs/train/full_ft_qwen_7b_local.yml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>./scripts/train_run_ft_torchtune_local.sh
+</code></pre></div>
+<p>启动脚本会在训练前做两类校验：
+- 配置中关键路径与权重分片是否存在；
+- 若设置了 <code>LEN_STATS_FILE</code>，会对训练数据做长度统计一致性校验。</p>
+<p>如需跳过长度统计校验，可显式设置：
+</p><div class="highlight"><pre><span></span><code><span class="nv">LEN_STATS_FILE</span><span class="o">=</span><span class="s2">""</span><span class="w"> </span><span class="nv">N_GPUS</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="nv">CONFIG_PATH</span><span class="o">=</span>configs/train/full_ft_qwen_7b_local.yml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>./scripts/train_run_ft_torchtune_local.sh
+</code></pre></div><p></p>
+<h3 id="4-checkpoint-swe-agent">4）启动本地 checkpoint 服务（可选，用于 SWE-agent 评测）</h3>
+<div class="highlight"><pre><span></span><code><span class="nv">MODEL_PATH</span><span class="o">=</span>/path/to/outputs/&lt;exp_name&gt;/epoch_2<span class="w"> </span><span class="se">\</span>
+<span class="nv">TOKENIZER_PATH</span><span class="o">=</span>/path/to/Qwen2.5-Coder-7B-Instruct<span class="w"> </span><span class="se">\</span>
+<span class="nv">SERVED_MODEL_NAME</span><span class="o">=</span>qwen2p5-coder-7b-sft-local<span class="w"> </span><span class="se">\</span>
+<span class="nv">TP_SIZE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+./scripts/train_serve_sglang_local.sh
+</code></pre></div>
+<p>该脚本与原仓库行为保持一致：若 <code>MODEL_PATH</code> 下缺少 <code>config.json</code>，会自动从 <code>TOKENIZER_PATH</code> 复制。</p>
+<p>兼容性说明：仓库仍保留旧命名（例如 <code>train.run_ft_torchtune.local.sh</code>）作为兼容入口；文档统一使用新的 <code>snake_case</code> 命名。</p>
+<h3 id="5-swe-agent">5）运行 SWE-agent 推理与评估</h3>
+<p>在 SWE-agent 中将 <code>_infer_model.sh</code> 指向本地 <code>sglang</code> 地址，推理完成后执行：</p>
+<div class="highlight"><pre><span></span><code>sb-cli<span class="w"> </span>submit<span class="w"> </span>swe-bench_verified<span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--predictions_path<span class="w"> </span>/path/to/SWE-agent/trajectories/&lt;user&gt;/&lt;run_id&gt;/preds.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--run_id<span class="w"> </span>&lt;run_id&gt;
+</code></pre></div>
 
 
 

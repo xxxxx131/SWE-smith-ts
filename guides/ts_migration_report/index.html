@@ -1,0 +1,2526 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://swe-smith.com/guides/ts_migration_report/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/swesmith_logo.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+    
+    
+      
+        <title>SWE-smith Python → TypeScript 迁移：工作总结与踩坑记录 - SWE-smith Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+  
+  
+  
+  
+  <style>:root{--md-annotation-icon:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M22%2012a10%2010%200%200%201-10%2010A10%2010%200%200%201%202%2012%2010%2010%200%200%201%2012%202a10%2010%200%200%201%2010%2010m-12%206%206-6-6-6-1.4%201.4%204.6%204.6-4.6%204.6z%22/%3E%3C/svg%3E');}</style>
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../css/custom.css">
+    
+      <link rel="stylesheet" href="../../css/mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../css/bubbles.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  
+  
+
+<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-T5P2NYGJYR"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-T5P2NYGJYR",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-T5P2NYGJYR",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+  <link href="../../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#swe-smith-python-typescript" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+              <button class="md-banner__button md-icon" aria-label="Don't show this again">
+                
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+              </button>
+            
+            
+📣 Check out <a href="https://mini-swe-agent.com">Mini-SWE-Agent</a>, an AI agent implemented in 100 lines that achieves 65% on SWE-bench verified!
+
+          </div>
+          
+            <script>var el=document.querySelector("[data-md-component=announce]");if(el){var content=el.querySelector(".md-typeset");__md_hash(content.innerHTML)===__md_get("__announce")&&(el.hidden=!0)}</script>
+          
+        </aside>
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="SWE-smith Documentation" class="md-header__button md-logo" aria-label="SWE-smith Documentation" data-md-component="logo">
+      
+  <img src="../../assets/swesmith_logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SWE-smith Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              SWE-smith Python → TypeScript 迁移：工作总结与踩坑记录
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="deep-orange" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="deep-orange" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/SWE-bench/SWE-smith" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    SWE-bench/SWE-smith
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting_started/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Tutorials
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../env_construction_py/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Miscellaneous
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="SWE-smith Documentation" class="md-nav__button md-logo" aria-label="SWE-smith Documentation" data-md-component="logo">
+      
+  <img src="../../assets/swesmith_logo.png" alt="logo">
+
+    </a>
+    SWE-smith Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/SWE-bench/SWE-smith" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    SWE-bench/SWE-smith
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2">
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../getting_started/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3">
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../env_construction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build Environments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../create_instances/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create Instances
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../harnesses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation &amp; Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../issue_gen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generate Issue Text
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../difficulty_rating/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rate Difficulty
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../train_swe_agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Train SWE-agents
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4">
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Miscellaneous
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Miscellaneous
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../env_construction_py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build Python Environments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        目录
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        一、项目背景与迁移目标
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        二、迁移工作全景图
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        三、我们做了哪些工作
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="三、我们做了哪些工作">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-typescript-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 TypeScript Profile 体系构建
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-typescript-ast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 TypeScript AST 解析适配器
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-typescript-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 TypeScript 专用 Bug 生成配置
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 端到端自动化流水线
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 自动 Profile 生成器
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-swe-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 SWE-agent 配置适配
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#37-docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 Docker 网络与代理方案
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#38" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.8 本地训练与服务部署全链路
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#39" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.9 三段式流水线文档体系
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        四、踩坑记录与解决方案
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="四、踩坑记录与解决方案">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 语言层面的坑
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.1 语言层面的坑">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1npm-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 1：npm test 链式命令导致全部失败
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 2：依赖漂移导致类型检查失败
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3typescript-ast-type_identifier-identifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 3：TypeScript AST 中类名使用 type_identifier 而非 identifier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4llm-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 4：LLM 生成的 Bug 修改类型注解导致编译错误
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5interfacetypeenum-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 5：纯类型定义（interface/type/enum）被错误收集为 bug 生成实体
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 配置层面的坑
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.2 配置层面的坑">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#6api-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 6：API 代理不支持 tools 字段
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7issue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 7：Issue 输出路径不统一
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 8：脚本命名混乱
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 性能与数据层面的坑
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.3 性能与数据层面的坑">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#970-32k-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 9：70% 轨迹超过 32K token 上下文限制
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 10：失败轨迹混入训练数据
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#11zod-jest-oom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 11：Zod Jest 测试 OOM
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 部署层面的坑
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.4 部署层面的坑">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#12docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 12：Docker 容器无法访问宿主机代理
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13socks-socksio-lm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 13：SOCKS 代理缺少 socksio 导致 LM 调用失败
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14sglang-nvcc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 14：SGLang 启动时 nvcc 编译失败
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 15：根分区空间不足导致构建/编译失败
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#16torchtune-checkpoint-configjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        坑 16：TorchTune checkpoint 缺少 config.json
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        五、关键产物清单
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="五、关键产物清单">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        新增文件
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        重写/修改文件
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        六、数据统计
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+
+                  
+
+
+  
+    <a href="https://github.com/SWE-bench/SWE-smith/edit/main/docs/guides/ts_migration_report.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"></path></svg>
+    </a>
+  
+  
+
+
+<h1 id="swe-smith-python-typescript">SWE-smith Python → TypeScript 迁移：工作总结与踩坑记录</h1>
+<h2 id="_1">目录</h2>
+<ul>
+<li><a href="#一项目背景与迁移目标">一、项目背景与迁移目标</a></li>
+<li><a href="#二迁移工作全景图">二、迁移工作全景图</a></li>
+<li><a href="#三我们做了哪些工作">三、我们做了哪些工作</a></li>
+<li><a href="#31-typescript-profile-体系构建">3.1 TypeScript Profile 体系构建</a></li>
+<li><a href="#32-typescript-ast-解析适配器">3.2 TypeScript AST 解析适配器</a></li>
+<li><a href="#33-typescript-专用-bug-生成配置">3.3 TypeScript 专用 Bug 生成配置</a></li>
+<li><a href="#34-端到端自动化流水线">3.4 端到端自动化流水线</a></li>
+<li><a href="#35-自动-profile-生成器">3.5 自动 Profile 生成器</a></li>
+<li><a href="#36-swe-agent-配置适配">3.6 SWE-agent 配置适配</a></li>
+<li><a href="#37-docker-网络与代理方案">3.7 Docker 网络与代理方案</a></li>
+<li><a href="#38-本地训练与服务部署全链路">3.8 本地训练与服务部署全链路</a></li>
+<li><a href="#39-三段式流水线文档体系">3.9 三段式流水线文档体系</a></li>
+<li><a href="#四踩坑记录与解决方案">四、踩坑记录与解决方案</a></li>
+<li><a href="#41-语言层面的坑">4.1 语言层面的坑</a></li>
+<li><a href="#42-配置层面的坑">4.2 配置层面的坑</a></li>
+<li><a href="#43-性能与数据层面的坑">4.3 性能与数据层面的坑</a></li>
+<li><a href="#44-部署层面的坑">4.4 部署层面的坑</a></li>
+<li><a href="#五关键产物清单">五、关键产物清单</a></li>
+<li><a href="#六数据统计">六、数据统计</a></li>
+</ul>
+<hr>
+<h2 id="_2">一、项目背景与迁移目标</h2>
+<p><a href="https://github.com/SWE-bench/SWE-smith">SWE-smith</a>（NeurIPS 2025 D&amp;B Spotlight）是一个用于训练软件工程 Agent 的工具包，其核心能力是将任意 GitHub 仓库转化为 SWE-bench 风格的训练数据。<strong>原始项目仅支持 Python 仓库</strong>，我们的工作是将其完整扩展到 TypeScript 生态。</p>
+<p>迁移目标包含三个层次：</p>
+<ol>
+<li><strong>环境层</strong>：让 SWE-smith 能构建 TypeScript 仓库的 Docker 执行环境</li>
+<li><strong>数据层</strong>：生成 TS 仓库的 Bug 任务实例 + SWE-agent 修复轨迹 + SFT 训练数据</li>
+<li><strong>训练层</strong>：基于 TS 轨迹数据对 Qwen2.5-Coder-7B-Instruct 进行本地全量微调</li>
+</ol>
+<hr>
+<h2 id="_3">二、迁移工作全景图</h2>
+<div class="highlight"><pre><span></span><code>原始 SWE-smith (仅 Python)
+│
+├─ profiles/python.py          ← 仅有 Python Profile
+├─ bug_gen/adapters/python.py  ← 仅有 Python AST 适配
+├─ configs/bug_gen/lm_*.yml    ← 仅有 Python Prompt
+├─ agent/swesmith_gen_*.yaml   ← 仅有 Python Agent 配置
+├─ scripts/train_*             ← 依赖 Modal 云平台
+└─ docs/                       ← 仅有 Python 文档
+
+                    ↓↓↓ 迁移工作 ↓↓↓
+
+扩展后 SWE-smith (Python + TypeScript)
+│
+├─ profiles/typescript.py          ✅ 新增：TS Profile 基类 + 7 个仓库 Profile
+├─ profiles/generated/             ✅ 新增：自动生成的 Profile 目录
+├─ bug_gen/adapters/typescript.py  ✅ 新增：tree-sitter-typescript AST 适配
+├─ configs/bug_gen/ts_modify.yml   ✅ 新增：TS 专用 LLM Bug 生成 Prompt
+├─ configs/bug_gen/ts_rewrite.yml  ✅ 新增：TS 专用 LLM Rewrite Prompt
+├─ configs/train/*_local.yml       ✅ 新增：本地训练配置
+├─ agent/swesmith_gen_glm_ts.yaml  ✅ 新增：TS 轨迹生成配置
+├─ agent/swesmith_infer_ts.yaml    ✅ 新增：TS 推理评测配置
+├─ agent/_gen_trajs.sh             ✅ 重写：代理预检 + SOCKS 降级 + 轨迹后检
+├─ scripts/ts_standard_pipeline.py ✅ 新增：TS 端到端流水线（636 行）
+├─ scripts/auto_profile_ts.py     ✅ 新增：自动 Profile 生成器（369 行）
+├─ scripts/train.*.local.sh        ✅ 新增：本地训练/服务全套脚本
+├─ train/traj_mgr/validate_*.py    ✅ 新增：训练数据长度统计校验
+├─ docs/guides/ts_*.md             ✅ 新增：TS 流水线三份文档
+├─ WORKFLOW.md                     ✅ 新增：快速参考手册
+└─ tsconfig.json                   ✅ 已有（上游仓库自带）
+</code></pre></div>
+<hr>
+<h2 id="_4">三、我们做了哪些工作</h2>
+<h3 id="31-typescript-profile">3.1 TypeScript Profile 体系构建</h3>
+<p><strong>文件</strong>：<code>swesmith/profiles/typescript.py</code>（457 行）</p>
+<p>SWE-smith 通过 Profile 类定义每个仓库的"身份信息"——Dockerfile 模板、测试命令、日志解析器、文件扩展名等。原始项目有 Python Profile 和 JavaScript Profile，但 TypeScript 有自身特殊性，不能直接复用 JS Profile。</p>
+<p><strong>我们的工作</strong>：</p>
+<ol>
+<li><strong>设计 <code>TypeScriptProfile</code> 基类</strong>，继承 <code>JavaScriptProfile</code>，增加 TS 特有逻辑：</li>
+</ol>
+<ul>
+<li>文件扩展名扩展为 <code>[".ts", ".tsx", ".js", ".jsx"]</code></li>
+<li>构建产物目录排除（<code>lib</code>、<code>.tsbuildinfo</code>、<code>typings</code>、<code>types</code>、<code>__generated__</code>、<code>esm</code>、<code>cjs</code>、<code>umd</code>）</li>
+<li>通用的依赖漂移处理机制（<code>skip_type_check</code> 标志 + <code>get_effective_test_cmd()</code> 正则剥离）</li>
+</ul>
+<ol start="2">
+<li><strong>手工编写 7 个 TS 仓库 Profile</strong>，每个都经过实际验证：</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Profile</th>
+<th>仓库</th>
+<th>测试框架</th>
+<th>包管理器</th>
+<th>特殊处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ZodProfile</code></td>
+<td>colinhacks/zod</td>
+<td>Jest (ts-jest)</td>
+<td>yarn</td>
+<td><code>NODE_OPTIONS=--max-old-space-size=4096</code></td>
+</tr>
+<tr>
+<td><code>ValibotProfile</code></td>
+<td>fabian-hiller/valibot</td>
+<td>Vitest</td>
+<td>npm</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>SuperstructProfile</code></td>
+<td>ianstormtaylor/superstruct</td>
+<td>Vitest</td>
+<td>npm</td>
+<td><code>skip_type_check=True</code></td>
+</tr>
+<tr>
+<td><code>CheerioProfile</code></td>
+<td>cheeriojs/cheerio</td>
+<td>Jest</td>
+<td>npm</td>
+<td><code>./node_modules/.bin/jest</code></td>
+</tr>
+<tr>
+<td><code>IoTsProfile</code></td>
+<td>gcanti/io-ts</td>
+<td>Vitest</td>
+<td>npm</td>
+<td>同作者 fp-ts</td>
+</tr>
+<tr>
+<td><code>NeverthrowProfile</code></td>
+<td>supermacro/neverthrow</td>
+<td>Vitest</td>
+<td>npm</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>YupProfile</code></td>
+<td>jquense/yup</td>
+<td>Jest</td>
+<td>npm</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>FpTsProfile</code></td>
+<td>gcanti/fp-ts</td>
+<td>Vitest</td>
+<td>npm</td>
+<td>绕过 dtslint 链</td>
+</tr>
+</tbody>
+</table>
+<ol start="3">
+<li><strong>制定测试命令选择原则</strong>（写入 <code>typescript.py</code> 头部），总结自对 81 个原始 JS Profile 的统计分析：</li>
+</ol>
+<ul>
+<li>优先级 1：<code>npm run &lt;specific-test-script&gt;</code>（29/81 使用）</li>
+<li>优先级 2：<code>./node_modules/.bin/&lt;runner&gt;</code>（4/81 使用）</li>
+<li>禁用：<code>npm test</code>（链式命令）、<code>npx</code>（静默下载）</li>
+</ul>
+<h3 id="32-typescript-ast">3.2 TypeScript AST 解析适配器</h3>
+<p><strong>文件</strong>：<code>swesmith/bug_gen/adapters/typescript.py</code>（271 行）</p>
+<p>SWE-smith 的 Bug 生成依赖 AST 解析提取代码实体。Python 使用内置 <code>ast</code> 模块提取 <code>ClassDef</code>/<code>FunctionDef</code>，TypeScript 需要完全不同的解析方案。</p>
+<p><strong>我们的工作</strong>：</p>
+<ol>
+<li><strong>基于 <code>tree-sitter-typescript</code> 实现 <code>TypeScriptEntity</code> 类</strong>，继承 <code>JavaScriptEntity</code>：</li>
+</ol>
+<ul>
+<li>自动区分 <code>.ts</code> 和 <code>.tsx</code> 文件，选择对应的 Language parser</li>
+<li>处理 TS 特有的 <code>type_identifier</code>（类名节点类型与 JS 的 <code>identifier</code> 不同）</li>
+<li>实现 <code>interface</code>、<code>enum</code>、<code>type alias</code> 的 name/signature/stub 提取</li>
+</ul>
+<ol start="2">
+<li><strong>与 Python 适配器严格对齐的实体收集策略</strong>：</li>
+</ol>
+<ul>
+<li><strong>收集</strong>：<code>function_declaration</code>、<code>method_definition</code>、<code>class_declaration</code>、箭头函数（<code>arrow_function</code>）、函数表达式（<code>function_expression</code>）</li>
+<li><strong>不收集</strong>：<code>interface_declaration</code>、<code>type_alias_declaration</code>、<code>enum_declaration</code>——它们是纯类型定义，无可执行代码体，无法引入逻辑 bug</li>
+</ul>
+<ol start="3">
+<li><strong>处理 TypeScript 常见代码模式</strong>：</li>
+</ol>
+<ul>
+<li><code>const myFunc = () =&gt; {}</code> → 通过 <code>_collect_variable_functions_ts()</code> 处理 <code>variable_declaration</code>/<code>lexical_declaration</code> 中的箭头函数</li>
+<li><code>module.exports.fn = function() {}</code> → 通过 <code>_collect_assignment_functions_ts()</code> 处理赋值表达式中的函数</li>
+</ul>
+<h3 id="33-typescript-bug">3.3 TypeScript 专用 Bug 生成配置</h3>
+<p><strong>文件</strong>：<code>configs/bug_gen/ts_modify.yml</code>（67 行）、<code>configs/bug_gen/ts_rewrite.yml</code>（40 行）</p>
+<p><strong>我们的工作</strong>：</p>
+<p>原始 Python 的 LLM Bug 生成 Prompt 中没有类型系统约束，直接用于 TS 会导致 LLM 修改类型注解/接口定义，引入编译错误而非逻辑 bug。我们创建了 TS 专用的 Prompt 配置：</p>
+<ul>
+<li>在 <code>system</code> 中添加 TypeScript 专属约束：不得修改函数签名、参数类型、返回类型；不得修改 interface/type 定义；不得增删 import；保持所有类型注解不变</li>
+<li>在 <code>tips</code> 中添加 TS 专属提示：不得引入 TypeScript 编译错误</li>
+<li>Bug 示例适配为 TS 语法习惯：<code>=== → !==</code>、空值检查（<code>null/undefined</code>）、三元运算符等</li>
+</ul>
+<h3 id="34">3.4 端到端自动化流水线</h3>
+<p><strong>文件</strong>：<code>scripts/ts_standard_pipeline.py</code>（636 行）</p>
+<p><strong>我们的工作</strong>：</p>
+<p>SWE-smith 原始项目只为 Python 提供分步命令，TS 需要串联 7 个步骤。我们实现了一键执行的端到端流水线：</p>
+<div class="highlight"><pre><span></span><code>Step 1: create_mirror + build_image
+  ↓
+Step 2: generate_bugs (procedural / llm-modify / llm-rewrite / all)
+  ↓
+Step 3: collect_patches
+  ↓
+Step 4: validate_f2p (Fail-to-Pass 验证)
+  ↓
+Step 5: gather_instances (收集有效任务实例 + 推送分支)
+  ↓
+Step 6: generate_issue_text (LLM / static / tests / pr / skip)
+  ↓
+Step 7: 输出最终数据集 → logs/agent_datasets/&lt;repo&gt;_final.json
+</code></pre></div>
+<p>支持 20+ 参数控制，包括 bug 生成方法选择、LLM 模型指定、并行度、issue 生成模式等。内置了 issue 输出路径归一化（<code>_normalize_issue_output()</code>），解决不同 issue 生成器输出路径不一致的问题。</p>
+<h3 id="35-profile">3.5 自动 Profile 生成器</h3>
+<p><strong>文件</strong>：<code>scripts/auto_profile_ts.py</code>（369 行）</p>
+<p><strong>我们的工作</strong>：</p>
+<p>手工编写每个仓库的 Profile 繁琐且易出错。我们实现了自动检测工具：</p>
+<ol>
+<li>临时 clone 目标仓库</li>
+<li>读取 <code>package.json</code>，检测包管理器（npm/yarn/pnpm/bun）</li>
+<li>分析 <code>devDependencies</code> + <code>scripts</code>，按优先级检测测试框架（Vitest → Jest → Mocha → Ava → node:test）</li>
+<li>生成安全的测试命令（过滤含 <code>&amp;&amp;</code> 的链式命令，避免 <code>npx</code>）</li>
+<li>自动选择正确的 <code>log_parser</code>（<code>parse_log_jest</code>/<code>parse_log_vitest</code>/<code>parse_log_mocha</code>）</li>
+<li>输出到 <code>swesmith/profiles/generated/</code> 目录</li>
+<li>支持 <code>--run</code> 直接接入完整流水线、<code>--dry-run</code> 只预览不写入</li>
+</ol>
+<h3 id="36-swe-agent">3.6 SWE-agent 配置适配</h3>
+<p><strong>文件</strong>：<code>agent/swesmith_gen_glm_ts.yaml</code>、<code>agent/swesmith_infer_ts.yaml</code></p>
+<p><strong>我们的工作</strong>：</p>
+<ol>
+<li><strong>创建 TS 轨迹生成配置</strong>（<code>swesmith_gen_glm_ts.yaml</code>）：</li>
+</ol>
+<ul>
+<li>将 instance_template 中的 "Python repository" 替换为 "TypeScript code repository"</li>
+<li>提示文字改为 <code>node &lt;filename.js&gt;</code> 或仓库的测试命令</li>
+<li>review_on_submit 中的 <code>git checkout -- /path/to/test/file.py</code> 改为 <code>.ts</code></li>
+<li>配置代理变量透传（<code>propagate_env_variables</code>）</li>
+<li>使用 <code>function_calling</code> 解析模式</li>
+<li>接入 GLM-4.6 模型（BigModel/ZAI provider via LiteLLM）</li>
+</ul>
+<ol start="2">
+<li><strong>创建 TS 推理评测配置</strong>（<code>swesmith_infer_ts.yaml</code>）：</li>
+</ol>
+<ul>
+<li>使用 <code>xml_function_calling</code> 解析模式（绕过 API 代理不支持 <code>tools</code> 字段的问题）</li>
+<li>将工具定义以 XML 标签嵌入 system prompt</li>
+<li>配置 <code>last_n_observations: 5</code> 的历史管理策略</li>
+</ul>
+<h3 id="37-docker">3.7 Docker 网络与代理方案</h3>
+<p><strong>文件</strong>：<code>agent/_gen_trajs.sh</code>（231 行，其中约 130 行为代理相关逻辑）</p>
+<p><strong>我们的工作</strong>：</p>
+<p>SWE-agent 在 Docker 容器内运行，容器需访问 GitHub 等外部服务。我们实现了完整的代理预检和降级方案：</p>
+<ol>
+<li>
+<p><strong>socat 转发方案</strong>：宿主机代理监听 localhost，通过 socat 转发到 Docker 网桥地址 <code>172.17.0.1:10819</code>，容器内设置 <code>HTTP_PROXY=http://172.17.0.1:10819</code></p>
+</li>
+<li>
+<p><strong>代理预检机制</strong>（启动前自动执行）：
+   - TCP 端口可达性检测
+   - Docker 网桥网关连通性验证
+   - SOCKS 代理 + socksio 依赖检测
+   - 失败时给出具体修复建议（而非静默失败）</p>
+</li>
+<li>
+<p><strong>SOCKS 代理智能降级</strong>：当 <code>ALL_PROXY</code> 为 SOCKS 协议但 <code>socksio</code> 未安装时，自动 fallback 到 <code>HTTP_PROXY</code>/<code>HTTPS_PROXY</code></p>
+</li>
+<li>
+<p><strong>轨迹生成后检</strong>：检查 <code>.pred</code> 文件数量、解析 <code>run_batch_exit_statuses.yaml</code>、验证 <code>preds.json</code> 中非空 patch 比例</p>
+</li>
+</ol>
+<h3 id="38">3.8 本地训练与服务部署全链路</h3>
+<p>SWE-smith 原始设计依赖 <a href="https://modal.com/">Modal</a> 云平台。我们的环境无法使用 Modal，需要完全本地化。</p>
+<p><strong>我们的工作</strong>：</p>
+<ol>
+<li><strong>轨迹转 SFT</strong>（<code>scripts/train.prepare_sft_local.sh</code>）：</li>
+</ol>
+<ul>
+<li>封装 <code>swesmith.train.traj_mgr.collect_trajs</code></li>
+<li>支持可选的长度统计校验（<code>STATS_FILE</code>）</li>
+<li>默认输出到 <code>trajectories_sft/</code></li>
+</ul>
+<ol start="2">
+<li><strong>Resolved-only 过滤</strong>：</li>
+</ol>
+<ul>
+<li>从 <code>report.json</code> 的 <code>ids_resolved</code> 字段筛选成功修复的轨迹</li>
+<li>产出 <code>.resolved_only.xml.jsonl</code>，仅包含高质量训练数据</li>
+</ul>
+<ol start="3">
+<li><strong>本地训练配置</strong>（<code>configs/train/full_ft_qwen_7b_local.yml</code>）：</li>
+</ol>
+<ul>
+<li>模型：Qwen2.5-Coder-7B-Instruct</li>
+<li>数据：resolved-only 轨迹</li>
+<li>参数：<code>max_seq_len=32768</code>，<code>batch_size=1</code>，<code>gradient_accumulation=4</code>，<code>epochs=3</code>，<code>lr=1e-4</code>，<code>warmup=5</code>，<code>bf16</code>，<code>activation_checkpointing</code></li>
+<li>日志：WandB</li>
+</ul>
+<ol start="4">
+<li><strong>本地训练启动脚本</strong>（<code>scripts/train.run_ft_torchtune.local.sh</code>）：</li>
+</ol>
+<ul>
+<li>训练前自动校验：tokenizer 路径、checkpoint 路径、数据文件路径、权重分片完整性</li>
+<li>训练前长度统计一致性校验（可通过 <code>LEN_STATS_FILE=""</code> 跳过）</li>
+<li>调用 <code>tune run --nnodes 1 --nproc_per_node $N_GPUS full_finetune_distributed</code></li>
+</ul>
+<ol start="5">
+<li><strong>本地 SGLang 推理服务</strong>（<code>scripts/train.serve_sglang.local.sh</code>）：</li>
+</ol>
+<ul>
+<li>自动检测 conda 编译器并设置 <code>CC</code>/<code>CXX</code>/<code>CUDAHOSTCXX</code>/<code>NVCC_PREPEND_FLAGS</code>（解决 nvcc 与系统 g++ 不兼容问题）</li>
+<li>自动重定向构建缓存和临时文件到 <code>/data</code> 分区（避免根分区空间不足）</li>
+<li>自动补全 checkpoint 目录中缺失的 <code>config.json</code></li>
+</ul>
+<ol start="6">
+<li><strong>训练数据长度统计工具</strong>（<code>swesmith/train/traj_mgr/validate_len_stats.py</code>）：</li>
+</ol>
+<ul>
+<li>校验数据文件路径、样本数量与 stats 清单一致</li>
+<li>报告超过 <code>max_seq_len</code> 阈值的数据比例</li>
+</ul>
+<ol start="7">
+<li><strong>脚本命名规范化</strong>：</li>
+</ol>
+<ul>
+<li>统一使用 <code>snake_case</code> 命名（<code>train_prepare_sft_local.sh</code>、<code>train_run_ft_torchtune_local.sh</code>、<code>train_serve_sglang_local.sh</code>）</li>
+<li>旧的点分命名保留为兼容入口（仅 <code>exec</code> 转发）</li>
+</ul>
+<h3 id="39">3.9 三段式流水线文档体系</h3>
+<p><strong>文件</strong>：</p>
+<ul>
+<li><code>docs/guides/ts_pipeline_overview.md</code>（65 行）——端到端流程概览 + Mermaid 流程图</li>
+<li><code>docs/guides/ts_three_pipelines.md</code>（334 行）——三段式可复制执行的操作手册</li>
+<li><code>docs/guides/train_swe_agent.md</code>——完整训练指南（含本地训练章节）</li>
+<li><code>WORKFLOW.md</code>——日常操作速查卡</li>
+</ul>
+<hr>
+<h2 id="_5">四、踩坑记录与解决方案</h2>
+<h3 id="41">4.1 语言层面的坑</h3>
+<h4 id="1npm-test">坑 1：<code>npm test</code> 链式命令导致全部失败</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td>对 TS 仓库执行 <code>npm test --verbose</code>，即使所有测试通过也报失败</td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td>TS 仓库的 <code>npm test</code> 几乎都是链式命令（如 fp-ts 的 <code>lint &amp;&amp; prettier &amp;&amp; dtslint &amp;&amp; vitest &amp;&amp; docs</code>），非测试步骤（lint、dtslint、docs 构建）失败会中断整条链</td>
+</tr>
+<tr>
+<td><strong>影响</strong></td>
+<td>Bug 验证（F2P）全部误判为无效，无法生成任何有效任务实例</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>分析 81 个原始 JS Profile 的测试命令模式，制定三级优先级策略，选择直接调用测试运行器的纯脚本（如 <code>npm run vitest</code>）或本地二进制（如 <code>./node_modules/.bin/jest</code>）</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>swesmith/profiles/typescript.py</code> 头部注释 + 每个 Profile 的 <code>test_cmd</code> 定义</td>
+</tr>
+</tbody>
+</table>
+<h4 id="2">坑 2：依赖漂移导致类型检查失败</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td><code>superstruct</code> 仓库 Docker 构建后，<code>tsc --noEmit</code> 报错 <code>Cannot find name 'ESNext.Disposable'</code></td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td>仓库缺少 <code>package-lock.json</code>，<code>npm install</code> 时 <code>@types/expect</code> 间接拉入最新 <code>jest-mock</code>（要求 TS 5.2+），但仓库锁定 TS 4.8</td>
+</tr>
+<tr>
+<td><strong>影响</strong></td>
+<td>含 <code>tsc</code> 步骤的测试命令全部失败</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>设计 <code>skip_type_check</code> 通用标志 + <code>get_effective_test_cmd()</code> 正则剥离方法，自动从 <code>test_cmd</code> 中移除类型检查步骤</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>TypeScriptProfile.get_effective_test_cmd()</code>（6 条正则模式匹配 + 清理逻辑）</td>
+</tr>
+</tbody>
+</table>
+<h4 id="3typescript-ast-type_identifier-identifier">坑 3：TypeScript AST 中类名使用 <code>type_identifier</code> 而非 <code>identifier</code></h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td>提取 TS 类的实体名称时返回 <code>None</code></td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td>tree-sitter-typescript 中 <code>class_declaration</code> 的子节点用 <code>type_identifier</code> 表示类名，而 JavaScript 用 <code>identifier</code></td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>在 <code>TypeScriptEntity.name</code> 属性中添加 <code>class_declaration → type_identifier</code> 的特殊处理</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>swesmith/bug_gen/adapters/typescript.py</code> 第 86-87 行</td>
+</tr>
+</tbody>
+</table>
+<h4 id="4llm-bug">坑 4：LLM 生成的 Bug 修改类型注解导致编译错误</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td>LLM modify 生成的 bug diff 中修改了函数签名的类型注解，应用后 <code>tsc</code> 编译失败，F2P 验证无法通过</td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td>原始 Python 的 <code>lm_modify.yml</code> Prompt 没有类型系统相关约束</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>创建 <code>ts_modify.yml</code> 和 <code>ts_rewrite.yml</code>，在 system prompt 中添加 4 条 TypeScript 专属约束</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>configs/bug_gen/ts_modify.yml</code> 第 41-45 行</td>
+</tr>
+</tbody>
+</table>
+<h4 id="5interfacetypeenum-bug">坑 5：纯类型定义（interface/type/enum）被错误收集为 bug 生成实体</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td>LLM 被要求修改 <code>interface User { ... }</code> 引入 bug，但 interface 没有可执行代码，无法通过测试验证</td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td>最初的实现收集了所有 TS AST 顶层节点，包括纯类型定义</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>与 Python 适配器对齐——只收集有可执行代码体的实体（function、method、class），排除 interface/type alias/enum</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>swesmith/bug_gen/adapters/typescript.py</code> 第 208-212 行</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42">4.2 配置层面的坑</h3>
+<h4 id="6api-tools">坑 6：API 代理不支持 <code>tools</code> 字段</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td>SWE-agent 使用 <code>function_calling</code> 模式时，GLM API 代理返回 400 错误</td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td>部分 API 代理（非 OpenAI 原生）不支持请求体中的 <code>tools</code> 字段</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>创建两套配置：<code>function_calling</code>（原生 API）和 <code>xml_function_calling</code>（工具定义嵌入 system prompt）</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>agent/swesmith_infer_ts.yaml</code> 使用 <code>xml_function_calling</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="7issue">坑 7：Issue 输出路径不统一</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td>流水线在 Step 6 后找不到 issue 输出文件</td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td><code>get_static.py</code>/<code>get_from_pr.py</code> 输出到 <code>logs/task_insts/</code>，<code>generate.py</code> 输出到 <code>logs/issue_gen/</code>，路径不统一</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td><code>ts_standard_pipeline.py</code> 中实现 <code>_normalize_issue_output()</code> 统一归一化到 <code>logs/issue_gen/</code>，自动检测旧路径并复制</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>scripts/ts_standard_pipeline.py</code> 第 344-365 行</td>
+</tr>
+</tbody>
+</table>
+<h4 id="8">坑 8：脚本命名混乱</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td>文档中引用 <code>train_prepare_sft_local.sh</code>，实际文件名是 <code>train.prepare_sft_local.sh</code>，命令执行失败</td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td>仓库中存在两种命名风格（旧式点分 vs 新式 snake_case）</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>统一使用 <code>snake_case</code> 命名，旧文件保留为仅 <code>exec</code> 转发的兼容入口</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>scripts/train_prepare_sft_local.sh</code> 等 3 个转发脚本</td>
+</tr>
+</tbody>
+</table>
+<h3 id="43">4.3 性能与数据层面的坑</h3>
+<h4 id="970-32k-token">坑 9：70% 轨迹超过 32K token 上下文限制</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td>394 条 SWE-agent 轨迹中仅 114 条（29%）在 32K context length 以内</td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td>SWE-agent 的轨迹包含完整的多轮对话历史（观测结果、工具调用、代码文件内容），单条轨迹很容易超 32K</td>
+</tr>
+<tr>
+<td><strong>上游状态</strong></td>
+<td>SWE-smith 官方 Issue #21 未给出训练时截断方案；SWE-agent 仅在推理时使用 <code>last_n_observations</code> 截断历史，导出数据是全量的</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>采用 <code>keep_all_truncate</code> 策略——保留全部数据，由 TorchTune tokenizer 按 <code>max_seq_len=32768</code> 自动截断超长序列；同时创建 <code>validate_len_stats.py</code> 工具在训练前报告超长比例</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>configs/train/full_ft_qwen_7b_local.yml</code> 的 <code>max_seq_len: 32768</code> + <code>packed: False</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="10">坑 10：失败轨迹混入训练数据</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td>SFT 数据包含大量未成功修复问题的轨迹，模型学习到错误的行为模式</td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td>轨迹转换脚本默认导出所有轨迹，不区分成功/失败</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>增加 Resolved-only 过滤步骤——从 <code>report.json</code> 读取 <code>ids_resolved</code>，只保留成功修复的轨迹</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>docs/guides/ts_three_pipelines.md</code> 第 2.4 节的内联 Python 脚本</td>
+</tr>
+</tbody>
+</table>
+<h4 id="11zod-jest-oom">坑 11：Zod Jest 测试 OOM</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td>Zod 仓库的 Jest 测试在 Docker 容器中因内存不足被 kill</td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td>ts-jest 编译 + Jest 并行测试消耗大量内存，默认 Node.js 堆大小不够</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>在 <code>ZodProfile.test_cmd</code> 中设置 <code>NODE_OPTIONS=--max-old-space-size=4096</code>，并在 <code>_gen_trajs.sh</code> 中通过 <code>--memory=10g</code> 限制容器内存</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>swesmith/profiles/typescript.py</code> 第 196 行</td>
+</tr>
+</tbody>
+</table>
+<h3 id="44">4.4 部署层面的坑</h3>
+<h4 id="12docker">坑 12：Docker 容器无法访问宿主机代理</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td>SWE-agent 容器内 <code>git clone</code> 超时，无法访问 GitHub</td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td>宿主机代理监听 <code>localhost</code>，容器内 <code>localhost</code> 指向容器自身，两者网络命名空间隔离</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>使用 socat 将代理转发到 Docker 网桥地址 <code>172.17.0.1:10819</code>，在 Agent 配置中通过 <code>propagate_env_variables</code> 注入代理环境变量</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>agent/swesmith_gen_glm_ts.yaml</code> 第 38-46 行；<code>agent/_gen_trajs.sh</code> 第 65-161 行</td>
+</tr>
+</tbody>
+</table>
+<p><strong>问题拓扑：</strong></p>
+<div class="highlight"><pre><span></span><code>宿主机 127.0.0.1:7890 (代理)         Docker 容器 127.0.0.1 (容器自身)
+        ↑ 容器无法到达                         ↑ 指向自己，无代理
+</code></pre></div>
+<p>Docker 容器有独立的网络命名空间，容器内 <code>127.0.0.1</code> 是容器自己的 loopback，不是宿主机。
+宿主机代理只绑定了 <code>127.0.0.1</code>，不接受来自 Docker 网桥（<code>172.17.0.1</code>）的连接。
+因此容器内无论设 <code>127.0.0.1:7890</code> 还是 <code>172.17.0.1:7890</code>，都连不上代理。</p>
+<p><strong>解决方案——socat 端口转发，分三步：</strong></p>
+<p><strong>Step 1：在宿主机启动 socat 做桥接</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 监听 Docker 网桥 IP 的 10819 端口，转发到本机代理 7890</span>
+socat<span class="w"> </span>TCP-LISTEN:10819,bind<span class="o">=</span><span class="m">172</span>.17.0.1,reuseaddr,fork<span class="w"> </span>TCP:127.0.0.1:7890
+</code></pre></div>
+<ul>
+<li><code>bind=172.17.0.1</code>：绑定到 Docker 默认网桥的网关地址，容器可通过此 IP 访问宿主机</li>
+<li><code>fork</code>：每个连接 fork 子进程处理，支持并发</li>
+<li><code>TCP:127.0.0.1:7890</code>：将流量转发到宿主机上实际代理的监听端口</li>
+</ul>
+<p>此时网络拓扑变为：</p>
+<div class="highlight"><pre><span></span><code>容器 → 172.17.0.1:10819 → socat → 127.0.0.1:7890 → 代理 → 外网
+</code></pre></div>
+<p><strong>Step 2：设置环境变量（宿主机 shell）</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">HTTP_PROXY</span><span class="o">=</span>http://172.17.0.1:10819
+<span class="nb">export</span><span class="w"> </span><span class="nv">HTTPS_PROXY</span><span class="o">=</span>http://172.17.0.1:10819
+<span class="nb">export</span><span class="w"> </span><span class="nv">ALL_PROXY</span><span class="o">=</span>http://172.17.0.1:10819
+<span class="nb">export</span><span class="w"> </span><span class="nv">http_proxy</span><span class="o">=</span>http://172.17.0.1:10819
+<span class="nb">export</span><span class="w"> </span><span class="nv">https_proxy</span><span class="o">=</span>http://172.17.0.1:10819
+<span class="nb">export</span><span class="w"> </span><span class="nv">all_proxy</span><span class="o">=</span>http://172.17.0.1:10819
+<span class="nb">export</span><span class="w"> </span><span class="nv">NO_PROXY</span><span class="o">=</span><span class="m">127</span>.0.0.1
+<span class="nb">export</span><span class="w"> </span><span class="nv">no_proxy</span><span class="o">=</span><span class="m">127</span>.0.0.1
+</code></pre></div>
+<p>大小写都要设：<code>git</code>/<code>curl</code> 读小写，<code>httpx</code>/<code>LiteLLM</code> 读大写。</p>
+<p><strong>Step 3：Agent 配置透传变量到容器</strong></p>
+<p>SWE-agent 启动容器时默认不继承宿主机环境变量。
+在 <code>agent/swesmith_gen_glm_ts.yaml</code> 中配置 <code>propagate_env_variables</code>，
+SWE-agent 会自动通过 <code>docker run -e HTTP_PROXY=... -e HTTPS_PROXY=...</code> 注入。</p>
+<p><strong>Step 4（已内置）：<code>_gen_trajs.sh</code> 自动预检</strong></p>
+<p>脚本启动时自动执行三层检测，避免容器跑半天才发现代理不通：
+1. TCP 连接检测每个代理端口的可达性
+2. 若代理在 localhost，额外检测 Docker 网桥网关 <code>172.17.0.1</code> 能否连通该端口
+3. 若 <code>ALL_PROXY</code> 是 SOCKS 协议但 <code>socksio</code> 未安装，自动降级到 <code>HTTP_PROXY</code></p>
+<h4 id="13socks-socksio-lm">坑 13：SOCKS 代理缺少 socksio 导致 LM 调用失败</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td><code>_gen_trajs.sh</code> 启动后所有 LM API 调用报 <code>No module named 'socksio'</code> 错误</td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td><code>ALL_PROXY</code> 设置为 SOCKS 协议，但 httpx 的 SOCKS 支持需要 <code>socksio</code>（未默认安装）</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>在启动脚本中检测 SOCKS 协议 + socksio 可用性，不可用时自动 fallback 到 HTTP_PROXY</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>agent/_gen_trajs.sh</code> 第 37-57 行</td>
+</tr>
+</tbody>
+</table>
+<h4 id="14sglang-nvcc">坑 14：SGLang 启动时 nvcc 编译失败</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td><code>sglang.launch_server</code> 启动时报 <code>fatal error: concepts: No such file or directory</code>（C++20 头文件缺失）</td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td>NVCC 默认使用系统 g++（版本过旧，不支持 C++20），而 conda 环境自带更新的编译器</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>脚本自动检测 conda 编译器路径，设置 <code>CC</code>/<code>CXX</code>/<code>CUDAHOSTCXX</code>/<code>NVCC_PREPEND_FLAGS=-ccbin</code></td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>scripts/train.serve_sglang.local.sh</code> 第 15-34 行</td>
+</tr>
+</tbody>
+</table>
+<h4 id="15">坑 15：根分区空间不足导致构建/编译失败</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td>SGLang JIT 编译或 TorchTune 训练时因磁盘空间不足失败</td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td>默认缓存目录 <code>~/.cache</code> 和临时目录 <code>/tmp</code> 位于根分区，而根分区空间有限</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>自动将 <code>XDG_CACHE_HOME</code>、<code>TVM_FFI_CACHE_DIR</code>、<code>TMPDIR</code> 重定向到数据分区的 <code>.cache</code> 和 <code>.tmp</code> 目录</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>scripts/train.serve_sglang.local.sh</code> 第 36-51 行</td>
+</tr>
+</tbody>
+</table>
+<h4 id="16torchtune-checkpoint-configjson">坑 16：TorchTune checkpoint 缺少 config.json</h4>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>详情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>现象</strong></td>
+<td>SGLang 加载 TorchTune 微调后的 checkpoint 时报 <code>config.json not found</code></td>
+</tr>
+<tr>
+<td><strong>根因</strong></td>
+<td>TorchTune 全量微调只输出权重文件，不复制 <code>config.json</code>（模型架构定义文件）</td>
+</tr>
+<tr>
+<td><strong>解决</strong></td>
+<td>SGLang 启动脚本自动从原始 tokenizer 目录复制 <code>config.json</code> 到 checkpoint 目录</td>
+</tr>
+<tr>
+<td><strong>代码</strong></td>
+<td><code>scripts/train.serve_sglang.local.sh</code> 第 63-70 行</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="_6">五、关键产物清单</h2>
+<h3 id="_7">新增文件</h3>
+<table>
+<thead>
+<tr>
+<th>文件路径</th>
+<th>行数</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>swesmith/profiles/typescript.py</code></td>
+<td>457</td>
+<td>TS Profile 基类 + 7 个仓库 Profile</td>
+</tr>
+<tr>
+<td><code>swesmith/bug_gen/adapters/typescript.py</code></td>
+<td>271</td>
+<td>TS AST 解析适配器</td>
+</tr>
+<tr>
+<td><code>scripts/ts_standard_pipeline.py</code></td>
+<td>636</td>
+<td>TS 端到端任务实例生成流水线</td>
+</tr>
+<tr>
+<td><code>scripts/auto_profile_ts.py</code></td>
+<td>369</td>
+<td>自动 Profile 生成器</td>
+</tr>
+<tr>
+<td><code>agent/swesmith_gen_glm_ts.yaml</code></td>
+<td>89</td>
+<td>TS 轨迹生成 Agent 配置</td>
+</tr>
+<tr>
+<td><code>agent/swesmith_infer_ts.yaml</code></td>
+<td>138</td>
+<td>TS 推理评测 Agent 配置</td>
+</tr>
+<tr>
+<td><code>configs/bug_gen/ts_modify.yml</code></td>
+<td>67</td>
+<td>TS LLM Bug Modify 配置</td>
+</tr>
+<tr>
+<td><code>configs/bug_gen/ts_rewrite.yml</code></td>
+<td>40</td>
+<td>TS LLM Bug Rewrite 配置</td>
+</tr>
+<tr>
+<td><code>configs/train/full_ft_qwen_7b_local.yml</code></td>
+<td>92</td>
+<td>本地 7B 全量微调配置</td>
+</tr>
+<tr>
+<td><code>scripts/train.prepare_sft_local.sh</code></td>
+<td>48</td>
+<td>轨迹转 SFT 脚本</td>
+</tr>
+<tr>
+<td><code>scripts/train.run_ft_torchtune.local.sh</code></td>
+<td>74</td>
+<td>本地 TorchTune 训练脚本</td>
+</tr>
+<tr>
+<td><code>scripts/train.serve_sglang.local.sh</code></td>
+<td>102</td>
+<td>本地 SGLang 服务脚本</td>
+</tr>
+<tr>
+<td><code>swesmith/train/traj_mgr/validate_len_stats.py</code></td>
+<td>96</td>
+<td>训练数据长度校验</td>
+</tr>
+<tr>
+<td><code>docs/guides/ts_pipeline_overview.md</code></td>
+<td>65</td>
+<td>TS 流水线概览</td>
+</tr>
+<tr>
+<td><code>docs/guides/ts_three_pipelines.md</code></td>
+<td>334</td>
+<td>三段式操作手册</td>
+</tr>
+<tr>
+<td><code>WORKFLOW.md</code></td>
+<td>97</td>
+<td>快速参考手册</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_8">重写/修改文件</h3>
+<table>
+<thead>
+<tr>
+<th>文件路径</th>
+<th>修改内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agent/_gen_trajs.sh</code></td>
+<td>新增 ~130 行代理预检 + SOCKS 降级 + 轨迹后检</td>
+</tr>
+<tr>
+<td><code>docs/guides/train_swe_agent.md</code></td>
+<td>新增本地训练章节</td>
+</tr>
+<tr>
+<td>3 个 <code>snake_case</code> 兼容入口脚本</td>
+<td>转发到旧命名脚本</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="_9">六、数据统计</h2>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>新增/修改文件总数</td>
+<td>30+</td>
+</tr>
+<tr>
+<td>新增代码行数</td>
+<td>~3,000+</td>
+</tr>
+<tr>
+<td>覆盖的 TS 仓库</td>
+<td>7 个（手工） + 自动生成支持</td>
+</tr>
+<tr>
+<td>解决的具体问题</td>
+<td>16 个（语言 5 + 配置 3 + 性能 3 + 部署 5）</td>
+</tr>
+<tr>
+<td>文档页面</td>
+<td>4 份（~830 行）</td>
+</tr>
+<tr>
+<td>端到端覆盖步骤</td>
+<td>环境构建 → Bug 生成 → 验证 → Issue → 轨迹 → SFT → 训练 → 服务 → 评测</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+
+
+<div class="floating-bubbles">
+  <div class="floating-bubbles-title">Our projects</div>
+  <a href="https://swebench.com" class="bubble" title="SWE-bench">
+    <img src="../../assets/swebench_logo.png" alt="SWE-bench">
+    <span class="bubble-tooltip">SWE-bench</span>
+  </a>
+  <a href="https://swe-agent.com/" class="bubble" title="SWE-agent">
+    <img src="../../assets/sweagent_logo.svg" alt="SWE-agent">
+    <span class="bubble-tooltip">SWE-agent</span>
+  </a>
+  <a href="https://mini-swe-agent.com/" class="bubble" title="Mini-SWE-Agent">
+    <img src="../../assets/mini_logo.svg" alt="Mini-SWE-Agent">
+    <span class="bubble-tooltip">Mini-SWE-Agent</span>
+  </a>
+  <a href="https://swe-rex.com/" class="bubble" title="SWE-rex">
+    <img src="../../assets/swerex_logo.svg" alt="SWE-rex">
+    <span class="bubble-tooltip">SWE-ReX</span>
+  </a>
+  <!-- <a href="https://swesmith.com" class="bubble" title="SWE-smith">
+    <img src="../../assets/swesmith_logo.png" alt="SWE-smith">
+    <span class="bubble-tooltip">SWE-smith</span>
+  </a> -->
+  <a href="https://www.swebench.com/sb-cli/" class="bubble" title="sb-cli">
+    <img src="../../assets/sbcli_logo.svg" alt="sb-cli">
+    <span class="bubble-tooltip">sb-cli</span>
+  </a>
+</div>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-46KMJE3755"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-46KMJE3755');
+</script>
+
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.indexes", "content.action.edit", "navigation.footer", "content.code.copy", "content.footnote.tooltips", "header.autohide", "announce.dismiss", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html><!-- Floating Bubbles -->
